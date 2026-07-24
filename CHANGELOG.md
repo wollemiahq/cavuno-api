@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Changed the public contact address to `hi@cavuno.com`.
+- Simplified the repository documentation for API consumers.
+
 ## 1.0.0 — 2026-07-23
 
 - Published the first standalone Cavuno operator API contract.

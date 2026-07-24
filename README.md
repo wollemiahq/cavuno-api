@@ -14,9 +14,8 @@ available in the Cavuno UI.
 - Authentication: Cavuno API key or OAuth bearer token
 - Issues: <https://github.com/wollemiahq/cavuno-api/issues>
 
-This repository contains the public interface contract, examples, and issue
-tracker. It does not contain Cavuno's service implementation, private routes,
-credentials, infrastructure configuration, or customer data.
+Use this repository to inspect the contract, generate clients, validate
+integrations, and report API issues.
 
 The OpenAPI document is generated from Cavuno's public API allowlist. Do not
 hand-edit it; propose contract changes through an issue.

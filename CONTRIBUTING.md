@@ -6,7 +6,7 @@ Thank you for helping improve the Cavuno API contract and documentation.
 
 Use issues for documentation problems, inconsistent schemas, missing examples,
 and proposals for public API behavior. Do not include API keys, access tokens,
-customer data, private endpoints, or vulnerability details.
+customer data, or vulnerability details.
 
 Report vulnerabilities privately as described in `SECURITY.md`.
 

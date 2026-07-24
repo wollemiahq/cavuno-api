@@ -8,7 +8,7 @@ The hosted `v1` API and its latest published OpenAPI document are supported.
 
 Do not open a public issue for a suspected vulnerability.
 
-Email support@cavuno.com with:
+Email hi@cavuno.com with:
 
 - the affected endpoint and API version;
 - a clear description of the impact;
