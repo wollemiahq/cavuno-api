@@ -8,9 +8,11 @@ operator-visible resources through the same product-level capabilities
 available in the Cavuno UI.
 
 - API base: `https://api.cavuno.com/v1`
-- Documentation: https://cavuno.com/docs/api
+- Cavuno: <https://cavuno.com>
+- Documentation: <https://cavuno.com/docs/api>
 - OpenAPI: [`openapi.json`](./openapi.json)
 - Authentication: Cavuno API key or OAuth bearer token
+- Issues: <https://github.com/wollemiahq/cavuno-api/issues>
 
 This repository contains the public interface contract, examples, and issue
 tracker. It does not contain Cavuno's service implementation, private routes,
