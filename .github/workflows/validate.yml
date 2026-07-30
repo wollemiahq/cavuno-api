@@ -17,5 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
+      - name: Test public contract validation
+        run: node --test scripts/*.test.mjs
+
       - name: Validate public OpenAPI contract
         run: node scripts/validate.mjs

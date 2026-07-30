@@ -266,7 +266,7 @@
     "/backfill/companies/bulk-start": {
       "post": {
         "summary": "Bulk-start Backfill for companies",
-        "description": "Start backfill for up to 100 Cavuno company IDs. Preserves order and returns per-item success or product error without provider detail. Requires an `Idempotency-Key` header.",
+        "description": "Start backfill for up to 100 Cavuno company IDs. Preserves order and returns per-item success or product error without provider detail (a not-Backfillable company reports `company_not_backfillable`). Requires an `Idempotency-Key` header.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -451,7 +451,7 @@
     "/backfill/companies/{companyId}/start": {
       "post": {
         "summary": "Start Backfill for a company",
-        "description": "Start collecting jobs for a Cavuno company. Registration uses an existing provider match or the company website, resolved server-side. Requires an `Idempotency-Key` header.",
+        "description": "Start collecting jobs for a Cavuno company. Registration uses an existing provider match or the company website, resolved server-side. A company with no supported ATS detected on its website and no confirmed match is rejected with `company_not_backfillable` (422). Requires an `Idempotency-Key` header.",
         "parameters": [
           {
             "schema": {
@@ -1107,6 +1107,98 @@
         "operationId": "createBlogAuthor"
       }
     },
+    "/blog/authors/export": {
+      "get": {
+        "summary": "Export blog authors",
+        "description": "Exports the account’s blog authors. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `blog.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of blog author export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of blog author export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/blog/authors/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Blog authors"
+        ],
+        "operationId": "exportBlogAuthors"
+      }
+    },
     "/blog/authors/{id}": {
       "get": {
         "summary": "Retrieve a blog author",
@@ -1498,6 +1590,98 @@
           "Blog posts"
         ],
         "operationId": "batchBlogPosts"
+      }
+    },
+    "/blog/posts/export": {
+      "get": {
+        "summary": "Export blog posts",
+        "description": "Exports the account’s blog posts. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `blog.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of blog post export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of blog post export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/blog/posts/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Blog posts"
+        ],
+        "operationId": "exportBlogPosts"
       }
     },
     "/blog/posts/search": {
@@ -2034,6 +2218,98 @@
         "operationId": "createBlogTag"
       }
     },
+    "/blog/tags/export": {
+      "get": {
+        "summary": "Export blog tags",
+        "description": "Exports the account’s blog tags. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `blog.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of blog tag export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of blog tag export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/blog/tags/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Blog tags"
+        ],
+        "operationId": "exportBlogTags"
+      }
+    },
     "/blog/tags/{id}": {
       "get": {
         "summary": "Retrieve a blog tag",
@@ -2339,6 +2615,98 @@
           "Candidates"
         ],
         "operationId": "listCandidates"
+      }
+    },
+    "/candidates/export": {
+      "get": {
+        "summary": "Export candidates",
+        "description": "Exports the account’s candidates. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). Resume blobs are never inlined — a candidate with a resume carries a `resumeUrl` pointing at the authenticated `GET /v1/candidates/{id}/resume` stream. `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `candidates.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of candidate export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of candidate export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/candidates/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Candidates"
+        ],
+        "operationId": "exportCandidates"
       }
     },
     "/candidates/{id}": {
@@ -2709,6 +3077,98 @@
           "Companies"
         ],
         "operationId": "batchCompanies"
+      }
+    },
+    "/companies/export": {
+      "get": {
+        "summary": "Export companies",
+        "description": "Exports the account’s companies. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `companies.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of company export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of company export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/companies/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Companies"
+        ],
+        "operationId": "exportCompanies"
       }
     },
     "/companies/find-or-create": {
@@ -4332,6 +4792,98 @@
           "Employers"
         ],
         "operationId": "rejectEmployersClaim"
+      }
+    },
+    "/employers/export": {
+      "get": {
+        "summary": "Export employers",
+        "description": "Exports the account’s employers. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `employers.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of employer export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of employer export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/employers/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Employers"
+        ],
+        "operationId": "exportEmployers"
       }
     },
     "/employers/memberships": {
@@ -6045,6 +6597,98 @@
         "operationId": "batchJobs"
       }
     },
+    "/jobs/export": {
+      "get": {
+        "summary": "Export jobs",
+        "description": "Exports the account’s jobs. `format=json` returns an inline list of export rows (max 10,000; fields mirror the CSV columns, camelCase). `format=csv` (default) returns `202` with an `exports.generate` operation — poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `jobs.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "csv",
+              "description": "Export format. `json` streams an inline list of job export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation."
+            },
+            "required": false,
+            "description": "Export format. `json` streams an inline list of job export rows (capped at 10,000 rows); `csv` (default) starts an async `exports.generate` operation.",
+            "name": "format",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inline JSON export (`format=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/jobs/export"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExportRow"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "An `exports.generate` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Jobs"
+        ],
+        "operationId": "exportJobs"
+      }
+    },
     "/jobs/search": {
       "post": {
         "summary": "Search jobs",
@@ -7277,6 +7921,54 @@
           "Operations"
         ],
         "operationId": "cancelOperation"
+      }
+    },
+    "/operations/{id}/download": {
+      "get": {
+        "summary": "Download an operation output",
+        "description": "Streams the file output of a completed operation (e.g. the CSV produced by an `exports.generate` or `subscribers.export` run). Returns `200 text/csv` with a `Content-Disposition` attachment once the operation has succeeded and produced an output. Any operation that is missing, not yours, not a public kind, not yet succeeded, or has no stored output returns `404 operations_not_found`. The underlying storage URL is never exposed — the bytes are streamed through the API. Requires `operations.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Unique identifier for the operation."
+            },
+            "required": true,
+            "description": "Unique identifier for the operation.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation output, streamed as a file attachment.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "CSV file bytes."
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "downloadOperationOutput"
       }
     },
     "/paywall": {
@@ -9190,7 +9882,7 @@
     "/subscribers/export": {
       "get": {
         "summary": "Export subscribers",
-        "description": "Exports the account’s subscribers. `format=json` returns an inline list (max 10,000 rows). `format=csv` (default) returns `202` with an operation. Poll it, then download the CSV from the result `downloadUrl`. Requires `alerts.read`.",
+        "description": "Exports the account’s subscribers. `format=json` returns an inline list (max 10,000 rows). `format=csv` (default) returns `202` with an operation. Poll it, then download the CSV from `GET /v1/operations/{id}/download` once it succeeds. Requires `alerts.read`.",
         "parameters": [
           {
             "schema": {
@@ -9200,10 +9892,10 @@
                 "json"
               ],
               "default": "csv",
-              "description": "Export format. `json` streams an inline list (capped at 10,000 rows); `csv` starts an async `subscribers.export` operation whose result carries a `downloadUrl`."
+              "description": "Export format. `json` streams an inline list (capped at 10,000 rows); `csv` starts an async `subscribers.export` operation whose CSV is downloadable from `GET /v1/operations/{id}/download` once it succeeds."
             },
             "required": false,
-            "description": "Export format. `json` streams an inline list (capped at 10,000 rows); `csv` starts an async `subscribers.export` operation whose result carries a `downloadUrl`.",
+            "description": "Export format. `json` streams an inline list (capped at 10,000 rows); `csv` starts an async `subscribers.export` operation whose CSV is downloadable from `GET /v1/operations/{id}/download` once it succeeds.",
             "name": "format",
             "in": "query"
           }
@@ -9252,7 +9944,7 @@
             }
           },
           "202": {
-            "description": "A `subscribers.export` operation was started (`format=csv`). Poll the operation; its result carries `downloadUrl` and `rowCount`.",
+            "description": "A `subscribers.export` operation was started (`format=csv`). Poll the operation; once it succeeds, download the CSV from `GET /v1/operations/{id}/download`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11345,6 +12037,14 @@
     }
   ],
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "cavuno_live_<keyId>_<secret>",
+        "description": "Use your secret API key to authenticate. Pass it as a Bearer token in the `Authorization` header. You can view and manage your API keys in the Cavuno dashboard."
+      }
+    },
     "schemas": {
       "AnalyticsOverview": {
         "type": "object",
@@ -12444,6 +13144,123 @@
         ],
         "additionalProperties": false
       },
+      "ExportRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for the exported row."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": {
+          "nullable": true
+        },
+        "description": "A single export row. Fields mirror the entity’s CSV columns (camelCase); array fields are JSON arrays and timestamps are epoch-millisecond UTC numbers."
+      },
+      "OperationResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the object."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "operation"
+            ],
+            "description": "String representing the object's type. Objects of the same type share the same value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "domains.verify",
+              "imports.parse",
+              "imports.confirm",
+              "subscribers.export",
+              "subscribers.import",
+              "exports.generate",
+              "candidates.remove",
+              "employers.remove"
+            ],
+            "description": "Operation kind, identifying which workflow the operation runs."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "description": "Current state of the operation."
+          },
+          "progress": {
+            "$ref": "#/components/schemas/OperationProgress"
+          },
+          "error": {
+            "$ref": "#/components/schemas/OperationErrorEnvelope"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Time at which the operation was created. ISO 8601 datetime."
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Time at which the operation was last updated. ISO 8601 datetime."
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Time at which the operation reached a terminal state, or `null` if it has not yet completed. ISO 8601 datetime."
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "Whether cancellation of the operation has been requested."
+          },
+          "resource": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "object": {
+                "type": "string",
+                "enum": [
+                  "company",
+                  "domain",
+                  "import",
+                  "employer",
+                  "candidate"
+                ]
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object",
+              "id"
+            ],
+            "description": "Stable product resource affected by the operation, or `null` when no public resource applies."
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "kind",
+          "state",
+          "progress",
+          "error",
+          "createdAt",
+          "updatedAt",
+          "completedAt",
+          "cancelRequested",
+          "resource"
+        ]
+      },
       "UpdateAuthorBody": {
         "type": "object",
         "properties": {
@@ -13276,106 +14093,6 @@
               "resume"
             ]
           }
-        ]
-      },
-      "OperationResource": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for the object."
-          },
-          "object": {
-            "type": "string",
-            "enum": [
-              "operation"
-            ],
-            "description": "String representing the object's type. Objects of the same type share the same value."
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "domains.verify",
-              "imports.parse",
-              "imports.confirm",
-              "subscribers.export",
-              "subscribers.import",
-              "candidates.remove",
-              "employers.remove"
-            ],
-            "description": "Operation kind, identifying which workflow the operation runs."
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "running",
-              "succeeded",
-              "failed",
-              "cancelled"
-            ],
-            "description": "Current state of the operation."
-          },
-          "progress": {
-            "$ref": "#/components/schemas/OperationProgress"
-          },
-          "error": {
-            "$ref": "#/components/schemas/OperationErrorEnvelope"
-          },
-          "createdAt": {
-            "type": "string",
-            "description": "Time at which the operation was created. ISO 8601 datetime."
-          },
-          "updatedAt": {
-            "type": "string",
-            "description": "Time at which the operation was last updated. ISO 8601 datetime."
-          },
-          "completedAt": {
-            "type": "string",
-            "nullable": true,
-            "description": "Time at which the operation reached a terminal state, or `null` if it has not yet completed. ISO 8601 datetime."
-          },
-          "cancelRequested": {
-            "type": "boolean",
-            "description": "Whether cancellation of the operation has been requested."
-          },
-          "resource": {
-            "type": "object",
-            "nullable": true,
-            "properties": {
-              "object": {
-                "type": "string",
-                "enum": [
-                  "company",
-                  "domain",
-                  "import",
-                  "employer",
-                  "candidate"
-                ]
-              },
-              "id": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "object",
-              "id"
-            ],
-            "description": "Stable product resource affected by the operation, or `null` when no public resource applies."
-          }
-        },
-        "required": [
-          "id",
-          "object",
-          "kind",
-          "state",
-          "progress",
-          "error",
-          "createdAt",
-          "updatedAt",
-          "completedAt",
-          "cancelRequested",
-          "resource"
         ]
       },
       "CompanySummary": {
@@ -19180,6 +19897,48 @@
           "type"
         ]
       },
+      "OperationProgress": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "percent": {
+            "type": "number",
+            "description": "Progress as a percentage between 0 and 100, when the operation reports a percentage."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable progress message, when available."
+          },
+          "processed": {
+            "type": "number",
+            "description": "Number of items processed so far, when applicable."
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of items to process, when known."
+          }
+        },
+        "description": "Snapshot of the operation's progress, or `null` if the operation does not report progress."
+      },
+      "OperationErrorEnvelope": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "description": "Error envelope, populated once the operation reaches `failed`. `null` otherwise."
+      },
       "CandidateProfile": {
         "type": "object",
         "properties": {
@@ -19281,48 +20040,6 @@
           "sizeBytes"
         ],
         "description": "Protected download path and metadata for the uploaded resume, or `null` when no resume is on file (or the storage blob is missing)."
-      },
-      "OperationProgress": {
-        "type": "object",
-        "nullable": true,
-        "properties": {
-          "percent": {
-            "type": "number",
-            "description": "Progress as a percentage between 0 and 100, when the operation reports a percentage."
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable progress message, when available."
-          },
-          "processed": {
-            "type": "number",
-            "description": "Number of items processed so far, when applicable."
-          },
-          "total": {
-            "type": "number",
-            "description": "Total number of items to process, when known."
-          }
-        },
-        "description": "Snapshot of the operation's progress, or `null` if the operation does not report progress."
-      },
-      "OperationErrorEnvelope": {
-        "type": "object",
-        "nullable": true,
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Machine-readable error code."
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message."
-          }
-        },
-        "required": [
-          "code",
-          "message"
-        ],
-        "description": "Error envelope, populated once the operation reaches `failed`. `null` otherwise."
       },
       "ResourceLinks": {
         "type": "object",
