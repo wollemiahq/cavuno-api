@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Included the Bearer authentication scheme required by the public contract.
+- Added validation for named security schemes and audited synchronization from
+  Cavuno’s canonical contract.
 - Changed the public contact address to `hi@cavuno.com`.
 - Simplified the repository documentation for API consumers.
 
