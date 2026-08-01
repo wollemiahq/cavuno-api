@@ -10157,7 +10157,10 @@
                               },
                               "frequency": {
                                 "type": "string",
-                                "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                                "enum": [
+                                  "weekly"
+                                ],
+                                "description": "Weekly delivery cadence."
                               },
                               "isActive": {
                                 "type": "boolean",
@@ -18933,7 +18936,10 @@
                         },
                         "frequency": {
                           "type": "string",
-                          "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                          "enum": [
+                            "weekly"
+                          ],
+                          "description": "Weekly delivery cadence."
                         },
                         "isActive": {
                           "type": "boolean",
