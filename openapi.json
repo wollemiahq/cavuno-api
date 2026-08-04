@@ -82,6 +82,305 @@
         "operationId": "getAnalyticsOverview"
       }
     },
+    "/analytics/search-console/inspect": {
+      "post": {
+        "operationId": "inspectSearchConsoleUrl",
+        "summary": "Inspect a URL in Google Search Console",
+        "description": "Returns Google’s complete indexed-version URL Inspection result for a URL inside the Board’s stored reporting coverage. This does not run a live test and does not request indexing.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inspectionUrl": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "format": "uri",
+                    "description": "Canonical HTTPS Board URL covered by the connected property."
+                  },
+                  "languageCode": {
+                    "type": "string",
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$",
+                    "description": "Optional BCP-47 language code, such as en-AU."
+                  }
+                },
+                "required": [
+                  "inspectionUrl"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The indexed-version URL Inspection result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchConsoleInspectionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The URL is outside the Board’s reporting coverage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Search Console is not connected or access was lost.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "URL Inspection quota was reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Google rejected the validated request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google Search Console is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/analytics/search-console/query": {
+      "post": {
+        "operationId": "querySearchConsole",
+        "summary": "Query Google Search Console performance",
+        "description": "Runs a live, finalized Search Analytics query against the Board’s connected Google Search Console property. Uses Google’s request and row shape while enforcing the Board’s stored reporting coverage. Results are top rows and are not exhaustive.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "dimensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "country",
+                        "date",
+                        "device",
+                        "page",
+                        "query",
+                        "searchAppearance"
+                      ]
+                    },
+                    "maxItems": 3
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "image",
+                      "video",
+                      "news",
+                      "discover",
+                      "googleNews"
+                    ]
+                  },
+                  "dimensionFilterGroups": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "groupType": {
+                          "type": "string",
+                          "enum": [
+                            "and"
+                          ]
+                        },
+                        "filters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dimension": {
+                                "type": "string",
+                                "enum": [
+                                  "country",
+                                  "device",
+                                  "page",
+                                  "query",
+                                  "searchAppearance"
+                                ]
+                              },
+                              "operator": {
+                                "type": "string",
+                                "enum": [
+                                  "contains",
+                                  "equals",
+                                  "notContains",
+                                  "notEquals",
+                                  "includingRegex",
+                                  "excludingRegex"
+                                ]
+                              },
+                              "expression": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              }
+                            },
+                            "required": [
+                              "dimension",
+                              "operator",
+                              "expression"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1,
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "groupType",
+                        "filters"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 1
+                  },
+                  "aggregationType": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "byPage",
+                      "byProperty"
+                    ]
+                  },
+                  "rowLimit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 25000
+                  },
+                  "startRow": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 250000
+                  },
+                  "dataState": {
+                    "type": "string",
+                    "enum": [
+                      "final"
+                    ]
+                  }
+                },
+                "required": [
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live finalized Search Console performance rows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchConsoleQueryResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Search Console is not connected or access was lost.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Google Search Console quota was reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Google rejected the validated request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google Search Console is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
     "/analytics/traffic": {
       "get": {
         "summary": "Get analytics traffic tables",
@@ -5753,7 +6052,7 @@
       },
       "patch": {
         "summary": "Enable or disable a reporting integration",
-        "description": "Pauses or resumes collection for an existing integration without disconnecting it.",
+        "description": "Pauses or resumes collection for an existing integration without disconnecting it. For Search Console, an account administrator with integration-management permission can also explicitly keep reads restricted to stored Board hostnames or authorize the entire selected Google property.",
         "parameters": [
           {
             "schema": {
@@ -10157,7 +10456,10 @@
                               },
                               "frequency": {
                                 "type": "string",
-                                "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                                "enum": [
+                                  "weekly"
+                                ],
+                                "description": "Weekly delivery cadence."
                               },
                               "isActive": {
                                 "type": "boolean",
@@ -12115,6 +12417,233 @@
           "error"
         ],
         "description": "The error envelope returned by every non-2xx response."
+      },
+      "SearchConsoleInspectionResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "search_console_url_inspection"
+            ]
+          },
+          "inspectionResult": {
+            "type": "object",
+            "properties": {
+              "inspectionResultLink": {
+                "type": "string"
+              },
+              "indexStatusResult": {
+                "type": "object",
+                "properties": {
+                  "verdict": {
+                    "type": "string"
+                  },
+                  "coverageState": {
+                    "type": "string"
+                  },
+                  "lastCrawlTime": {
+                    "type": "string"
+                  },
+                  "pageFetchState": {
+                    "type": "string"
+                  },
+                  "robotsTxtState": {
+                    "type": "string"
+                  },
+                  "indexingState": {
+                    "type": "string"
+                  },
+                  "googleCanonical": {
+                    "type": "string"
+                  },
+                  "userCanonical": {
+                    "type": "string"
+                  },
+                  "crawledAs": {
+                    "type": "string"
+                  },
+                  "sitemap": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "referringUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "richResultsResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              },
+              "ampResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              },
+              "mobileUsabilityResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "cavuno": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "board_hosts",
+                      "whole_property"
+                    ]
+                  },
+                  "hostnames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "hostnames"
+                ]
+              },
+              "indexedVersionOnly": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "coverage",
+              "indexedVersionOnly"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "cavuno"
+        ]
+      },
+      "SearchConsoleQueryResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "search_console_query"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "clicks": {
+                  "type": "number"
+                },
+                "impressions": {
+                  "type": "number"
+                },
+                "ctr": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "responseAggregationType": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            }
+          },
+          "cavuno": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "board_hosts",
+                      "whole_property"
+                    ]
+                  },
+                  "hostnames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "hostnames"
+                ]
+              },
+              "dataState": {
+                "type": "string",
+                "enum": [
+                  "final"
+                ]
+              },
+              "dataTimezone": {
+                "type": "string",
+                "enum": [
+                  "America/Los_Angeles"
+                ]
+              },
+              "latestObservedDate": {
+                "type": "string"
+              },
+              "exhaustive": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              }
+            },
+            "required": [
+              "coverage",
+              "dataState",
+              "dataTimezone",
+              "exhaustive"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "rows",
+          "cavuno"
+        ]
       },
       "AnalyticsTraffic": {
         "type": "object",
@@ -15598,11 +16127,17 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether collection is enabled for this integration."
+          },
+          "searchConsoleCoverageMode": {
+            "type": "string",
+            "enum": [
+              "board_hosts",
+              "whole_property"
+            ],
+            "description": "Search Console only. board_hosts restricts reads to stored Board hostnames; whole_property explicitly authorizes the entire selected Google property."
           }
         },
-        "required": [
-          "enabled"
-        ]
+        "additionalProperties": false
       },
       "ReportingConnect": {
         "type": "object",
@@ -18933,7 +19468,10 @@
                         },
                         "frequency": {
                           "type": "string",
-                          "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                          "enum": [
+                            "weekly"
+                          ],
+                          "description": "Weekly delivery cadence."
                         },
                         "isActive": {
                           "type": "boolean",
