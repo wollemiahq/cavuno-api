@@ -82,6 +82,305 @@
         "operationId": "getAnalyticsOverview"
       }
     },
+    "/analytics/search-console/inspect": {
+      "post": {
+        "operationId": "inspectSearchConsoleUrl",
+        "summary": "Inspect a URL in Google Search Console",
+        "description": "Returns Google’s complete indexed-version URL Inspection result for a URL inside the Board’s stored reporting coverage. This does not run a live test and does not request indexing.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inspectionUrl": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "format": "uri",
+                    "description": "Canonical HTTPS Board URL covered by the connected property."
+                  },
+                  "languageCode": {
+                    "type": "string",
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$",
+                    "description": "Optional BCP-47 language code, such as en-AU."
+                  }
+                },
+                "required": [
+                  "inspectionUrl"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The indexed-version URL Inspection result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchConsoleInspectionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The URL is outside the Board’s reporting coverage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Search Console is not connected or access was lost.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "URL Inspection quota was reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Google rejected the validated request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google Search Console is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/analytics/search-console/query": {
+      "post": {
+        "operationId": "querySearchConsole",
+        "summary": "Query Google Search Console performance",
+        "description": "Runs a live, finalized Search Analytics query against the Board’s connected Google Search Console property. Uses Google’s request and row shape while enforcing the Board’s stored reporting coverage. Results are top rows and are not exhaustive.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "dimensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "country",
+                        "date",
+                        "device",
+                        "page",
+                        "query",
+                        "searchAppearance"
+                      ]
+                    },
+                    "maxItems": 3
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "image",
+                      "video",
+                      "news",
+                      "discover",
+                      "googleNews"
+                    ]
+                  },
+                  "dimensionFilterGroups": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "groupType": {
+                          "type": "string",
+                          "enum": [
+                            "and"
+                          ]
+                        },
+                        "filters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dimension": {
+                                "type": "string",
+                                "enum": [
+                                  "country",
+                                  "device",
+                                  "page",
+                                  "query",
+                                  "searchAppearance"
+                                ]
+                              },
+                              "operator": {
+                                "type": "string",
+                                "enum": [
+                                  "contains",
+                                  "equals",
+                                  "notContains",
+                                  "notEquals",
+                                  "includingRegex",
+                                  "excludingRegex"
+                                ]
+                              },
+                              "expression": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              }
+                            },
+                            "required": [
+                              "dimension",
+                              "operator",
+                              "expression"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1,
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "groupType",
+                        "filters"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 1
+                  },
+                  "aggregationType": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "byPage",
+                      "byProperty"
+                    ]
+                  },
+                  "rowLimit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 25000
+                  },
+                  "startRow": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 250000
+                  },
+                  "dataState": {
+                    "type": "string",
+                    "enum": [
+                      "final"
+                    ]
+                  }
+                },
+                "required": [
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live finalized Search Console performance rows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchConsoleQueryResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Search Console is not connected or access was lost.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Google Search Console quota was reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Google rejected the validated request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google Search Console is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
     "/analytics/traffic": {
       "get": {
         "summary": "Get analytics traffic tables",
@@ -1321,7 +1620,7 @@
       },
       "delete": {
         "summary": "Delete a blog author",
-        "description": "Permanently deletes a blog author. Posts referencing this author keep the stale ID in their `authorIds` array (no cascade). It cannot be undone.",
+        "description": "Permanently deletes a blog author and schedules removal of its ID from every post `authorIds` array on the board (paginated drain). It cannot be undone.",
         "parameters": [
           {
             "schema": {
@@ -2432,7 +2731,7 @@
       },
       "delete": {
         "summary": "Delete a blog tag",
-        "description": "Permanently deletes a blog tag. Posts referencing this tag keep the stale ID in their `tagIds` array (no cascade). It cannot be undone.",
+        "description": "Permanently deletes a blog tag and schedules removal of its ID from every post `tagIds` array on the board (paginated drain). It cannot be undone.",
         "parameters": [
           {
             "schema": {
@@ -5753,7 +6052,7 @@
       },
       "patch": {
         "summary": "Enable or disable a reporting integration",
-        "description": "Pauses or resumes collection for an existing integration without disconnecting it.",
+        "description": "Pauses or resumes collection for an existing integration without disconnecting it. For Search Console, an account administrator with integration-management permission can also explicitly keep reads restricted to stored Board hostnames or authorize the entire selected Google property.",
         "parameters": [
           {
             "schema": {
@@ -5857,7 +6156,7 @@
     "/integrations/reporting/{provider}/connect": {
       "post": {
         "summary": "Connect a reporting integration",
-        "description": "Starts the connection flow. Some providers return a hosted authorization URL, some connect immediately, and payment reporting returns the Board monetization-settings URL. Provider credentials and configuration are never returned.",
+        "description": "Starts the connection flow. Some providers return a hosted authorization URL, some connect immediately, and payment reporting returns the Board payments-settings URL. Provider credentials and configuration are never returned.",
         "parameters": [
           {
             "schema": {
@@ -7156,6 +7455,206 @@
           "Jobs"
         ],
         "operationId": "publishJob"
+      }
+    },
+    "/marketing-permissions": {
+      "get": {
+        "summary": "List marketing consent decisions",
+        "description": "Every recorded consent decision on the board, read from the user records. People who have never decided are absent — absence of a record means no consent, never a default. Pages may run short of `limit`; follow `nextCursor` for completeness — `hasMore`, not page length, is the signal. `email` is an exact-match lookup returning at most one item; use it to resolve a provider unsubscribe to a board user.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "granted",
+                "withdrawn"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "email"
+            },
+            "required": false,
+            "name": "email",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consent decisions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/marketing-permissions"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MarketingPermission"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Key lacks `marketing_permissions.read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Marketing permissions"
+        ],
+        "operationId": "listMarketingPermissions"
+      }
+    },
+    "/marketing-permissions/{id}/withdraw": {
+      "post": {
+        "summary": "Withdraw marketing consent for a board user",
+        "description": "Operator-initiated withdrawal (`reason: operator_request`) — the right move when someone asks the operator directly to be removed. `{id}` is the board user id. Idempotent: re-withdrawing changes nothing and emits no event. Emits `marketing_permission.withdrawn` on a real transition.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The consent after the withdrawal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingPermission"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Key lacks `marketing_permissions.manage`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Board user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Marketing permissions"
+        ],
+        "operationId": "createMarketingPermissionWithdraw"
       }
     },
     "/me": {
@@ -10157,7 +10656,10 @@
                               },
                               "frequency": {
                                 "type": "string",
-                                "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                                "enum": [
+                                  "weekly"
+                                ],
+                                "description": "Weekly delivery cadence."
                               },
                               "isActive": {
                                 "type": "boolean",
@@ -11904,6 +12406,757 @@
         ],
         "operationId": "getUsage"
       }
+    },
+    "/webhook-deliveries": {
+      "get": {
+        "summary": "List webhook deliveries",
+        "description": "Returns Board-scoped delivery history, newest first. Optional filters: endpoint_id, status. Lease identity and raw event bodies are never included.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Filter to deliveries for a single endpoint."
+            },
+            "required": false,
+            "description": "Filter to deliveries for a single endpoint.",
+            "name": "endpoint_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "retrying",
+                "delivered",
+                "terminal",
+                "exhausted"
+              ],
+              "description": "Filter by public delivery lifecycle status."
+            },
+            "required": false,
+            "description": "Filter by public delivery lifecycle status.",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/webhook-deliveries"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WebhookDelivery"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.read or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "listWebhookDeliveries"
+      }
+    },
+    "/webhook-deliveries/{id}": {
+      "get": {
+        "summary": "Retrieve a webhook delivery",
+        "description": "Returns a delivery including its most recent attempt history (≤500 attempts, ascending by attempt_number). `attempt_count` is authoritative: when it exceeds `attempts.length`, older attempts were truncated. Never exposes lease fields or serialized event bodies.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook delivery ID."
+            },
+            "required": true,
+            "description": "The webhook delivery ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. `attempts` holds the most recent ≤500 attempts in ascending order; `attempt_count > attempts.length` implies truncation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeliveryDetail"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.read or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Delivery not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "getWebhookDelivery"
+      }
+    },
+    "/webhook-deliveries/{id}/replay": {
+      "post": {
+        "summary": "Replay a webhook delivery",
+        "description": "Resets a completed delivery (delivered, terminal, or exhausted) so the worker will attempt it again. Reuses the frozen event bytes and the occurrence-time endpoint configuration version; each attempt is signed with a fresh timestamp. Never creates a new domain event. Open deliveries (pending or retrying), deliveries outside the fixed 30-day retention window, and deliveries whose endpoint or frozen config version has been deleted return 409. A replayed exhausted delivery retains its attempt history, so if the replay attempt fails retryably it may exhaust again immediately: replay grants a fresh attempt, not a fresh retry budget.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook delivery ID."
+            },
+            "required": true,
+            "description": "The webhook delivery ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery reset to pending for a fresh attempt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDelivery"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Delivery not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cannot replay: delivery is still open, its 30-day replay window expired, or its destination no longer exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "replayWebhookDelivery"
+      }
+    },
+    "/webhook-endpoints": {
+      "get": {
+        "summary": "List webhook endpoints",
+        "description": "Returns Board-owned webhook endpoints. Secrets are never included.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/webhook-endpoints"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WebhookEndpoint"
+                      }
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "url",
+                    "hasMore",
+                    "nextCursor",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.read or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "listWebhookEndpoints"
+      },
+      "post": {
+        "summary": "Create a webhook endpoint",
+        "description": "Creates an enabled Board-owned webhook endpoint and returns the signing secret once. The endpoint immediately receives the selected supported V1 event types. The secret is returned only on the original response and is not replayed by an idempotent retry — recover a lost secret by rotating.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookEndpointBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Endpoint created; secret returned once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid URL or event types.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "createWebhookEndpoint"
+      }
+    },
+    "/webhook-endpoints/{id}": {
+      "get": {
+        "summary": "Retrieve a webhook endpoint",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook endpoint ID."
+            },
+            "required": true,
+            "description": "The webhook endpoint ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpoint"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.read or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "getWebhookEndpoint"
+      },
+      "patch": {
+        "summary": "Update a webhook endpoint",
+        "description": "Updates URL, event selection, or status (pause/resume). URL or event-type changes create a new immutable configuration version.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook endpoint ID."
+            },
+            "required": true,
+            "description": "The webhook endpoint ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWebhookEndpointBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpoint"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "updateWebhookEndpoint"
+      },
+      "delete": {
+        "summary": "Retire a webhook endpoint",
+        "description": "Soft-retires the endpoint: future live deliveries stop and open deliveries are cancelled, but immutable configuration, destination, and signing material are retained so existing deliveries can still be inspected and manually replayed within the retention window. Retired endpoints are hidden from list/detail reads.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook endpoint ID."
+            },
+            "required": true,
+            "description": "The webhook endpoint ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Retired."
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "deleteWebhookEndpoint"
+      }
+    },
+    "/webhook-endpoints/{id}/rotate-secret": {
+      "post": {
+        "summary": "Rotate a webhook endpoint secret",
+        "description": "Issues a new signing secret (returned once) and keeps the previous secret verifiable for a bounded overlap window. The secret is returned only on the original response and is not replayed by an idempotent retry — recover a lost secret by rotating.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook endpoint ID."
+            },
+            "required": true,
+            "description": "The webhook endpoint ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Secret rotated; new secret returned once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointCreated"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "rotateWebhookEndpointSecret"
+      }
+    },
+    "/webhook-endpoints/{id}/test": {
+      "post": {
+        "summary": "Send a synthetic test delivery",
+        "description": "Sends one unmistakably synthetic signed delivery to the endpoint URL and returns a sanitized outcome. Never copies real domain data.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The webhook endpoint ID."
+            },
+            "required": true,
+            "description": "The webhook endpoint ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test delivery attempted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTestDelivery"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The board's plan does not include webhooks (`plan_upgrade_required`). Webhooks require a paid plan, Starter and above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing webhooks.manage or a family read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "testWebhookEndpoint"
+      }
     }
   },
   "tags": [
@@ -11934,6 +13187,14 @@
     {
       "name": "Domains",
       "description": "Add, list, remove, and verify custom domains."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Configure Board-owned outbound webhook endpoints, inspect delivery history, and replay completed deliveries."
+    },
+    {
+      "name": "Marketing permissions",
+      "description": "Read marketing-email consent decisions off the board user records, and withdraw on request."
     },
     {
       "name": "Redirects",
@@ -12115,6 +13376,233 @@
           "error"
         ],
         "description": "The error envelope returned by every non-2xx response."
+      },
+      "SearchConsoleInspectionResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "search_console_url_inspection"
+            ]
+          },
+          "inspectionResult": {
+            "type": "object",
+            "properties": {
+              "inspectionResultLink": {
+                "type": "string"
+              },
+              "indexStatusResult": {
+                "type": "object",
+                "properties": {
+                  "verdict": {
+                    "type": "string"
+                  },
+                  "coverageState": {
+                    "type": "string"
+                  },
+                  "lastCrawlTime": {
+                    "type": "string"
+                  },
+                  "pageFetchState": {
+                    "type": "string"
+                  },
+                  "robotsTxtState": {
+                    "type": "string"
+                  },
+                  "indexingState": {
+                    "type": "string"
+                  },
+                  "googleCanonical": {
+                    "type": "string"
+                  },
+                  "userCanonical": {
+                    "type": "string"
+                  },
+                  "crawledAs": {
+                    "type": "string"
+                  },
+                  "sitemap": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "referringUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "richResultsResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              },
+              "ampResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              },
+              "mobileUsabilityResult": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "cavuno": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "board_hosts",
+                      "whole_property"
+                    ]
+                  },
+                  "hostnames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "hostnames"
+                ]
+              },
+              "indexedVersionOnly": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "coverage",
+              "indexedVersionOnly"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "cavuno"
+        ]
+      },
+      "SearchConsoleQueryResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "search_console_query"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "clicks": {
+                  "type": "number"
+                },
+                "impressions": {
+                  "type": "number"
+                },
+                "ctr": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "responseAggregationType": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            }
+          },
+          "cavuno": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "board_hosts",
+                      "whole_property"
+                    ]
+                  },
+                  "hostnames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "hostnames"
+                ]
+              },
+              "dataState": {
+                "type": "string",
+                "enum": [
+                  "final"
+                ]
+              },
+              "dataTimezone": {
+                "type": "string",
+                "enum": [
+                  "America/Los_Angeles"
+                ]
+              },
+              "latestObservedDate": {
+                "type": "string"
+              },
+              "exhaustive": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              }
+            },
+            "required": [
+              "coverage",
+              "dataState",
+              "dataTimezone",
+              "exhaustive"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "rows",
+          "cavuno"
+        ]
       },
       "AnalyticsTraffic": {
         "type": "object",
@@ -12999,6 +14487,11 @@
             "nullable": true,
             "description": "The author's email address, or `null` if not set."
           },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "The author's free-text location label, or `null` if not set."
+          },
           "status": {
             "type": "string",
             "nullable": true,
@@ -13013,6 +14506,11 @@
             "type": "string",
             "nullable": true,
             "description": "The author's website URL, or `null` if not set."
+          },
+          "facebookUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "The author's Facebook URL, or `null` if not set."
           },
           "twitterUrl": {
             "type": "string",
@@ -13056,9 +14554,11 @@
           "slug",
           "bio",
           "email",
+          "location",
           "status",
           "avatarUrl",
           "websiteUrl",
+          "facebookUrl",
           "twitterUrl",
           "linkedinUrl",
           "githubUrl",
@@ -13089,6 +14589,11 @@
             "format": "email",
             "description": "The author's email address."
           },
+          "location": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Free-text location label for the author (e.g. `Sydney, Australia`)."
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -13106,6 +14611,11 @@
             "type": "string",
             "maxLength": 500,
             "description": "The author's personal website URL. Normalized to a canonical URL when stored."
+          },
+          "facebookUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The author's Facebook profile URL."
           },
           "twitterUrl": {
             "type": "string",
@@ -13282,6 +14792,11 @@
             "format": "email",
             "description": "The author's email address."
           },
+          "location": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Free-text location label for the author (e.g. `Sydney, Australia`)."
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -13299,6 +14814,11 @@
             "type": "string",
             "maxLength": 500,
             "description": "The author's personal website URL. Normalized to a canonical URL when stored."
+          },
+          "facebookUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The author's Facebook profile URL."
           },
           "twitterUrl": {
             "type": "string",
@@ -13975,6 +15495,20 @@
             "type": "string",
             "description": "ISO-8601 timestamp of when the candidate registered."
           },
+          "candidateCreatedAt": {
+            "type": "string",
+            "description": "ISO-8601 timestamp when this Board user became an operator-visible Candidate. This is the reconciliation counterpart of candidate.created, not newsletter permission."
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 timestamp of the latest approved Candidate identity update, or null for older rows."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic Candidate lifecycle revision; legacy rows are 0 until the rollout migration runs."
+          },
           "lastActiveAt": {
             "type": "string",
             "nullable": true,
@@ -13990,6 +15524,9 @@
           "avatarUrl",
           "hasResume",
           "createdAt",
+          "candidateCreatedAt",
+          "updatedAt",
+          "revision",
           "lastActiveAt"
         ]
       },
@@ -14166,6 +15703,11 @@
             "nullable": true,
             "description": "Time at which the company was last updated, or `null` if it has never been updated. ISO 8601 datetime."
           },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Public Company lifecycle revision. Historical rows may be 0 until rollout backfill."
+          },
           "links": {
             "allOf": [
               {
@@ -14200,6 +15742,7 @@
           "facebookUrl",
           "createdAt",
           "updatedAt",
+          "revision",
           "links"
         ]
       },
@@ -15598,11 +17141,17 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether collection is enabled for this integration."
+          },
+          "searchConsoleCoverageMode": {
+            "type": "string",
+            "enum": [
+              "board_hosts",
+              "whole_property"
+            ],
+            "description": "Search Console only. board_hosts restricts reads to stored Board hostnames; whole_property explicitly authorizes the entire selected Google property."
           }
         },
-        "required": [
-          "enabled"
-        ]
+        "additionalProperties": false
       },
       "ReportingConnect": {
         "type": "object",
@@ -15880,6 +17429,11 @@
             "type": "string",
             "description": "Time at which the job was last updated. ISO 8601 datetime."
           },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic Job lifecycle revision used to reconcile webhook events. Legacy rows are 0 until the rollout backfill runs."
+          },
           "skills": {
             "type": "array",
             "items": {
@@ -15945,6 +17499,7 @@
           "expiresAt",
           "createdAt",
           "updatedAt",
+          "revision",
           "skills",
           "categories",
           "externalId",
@@ -15958,7 +17513,7 @@
           "companyId": {
             "type": "string",
             "minLength": 1,
-            "description": "The ID of an existing company. Provide either `companyId` or `company`, not both."
+            "description": "The ID of an existing company. **Required unless you supply `company`** — exactly one of the two must be present, and supplying both is an error."
           },
           "description": {
             "type": "string",
@@ -15990,7 +17545,7 @@
               "hybrid",
               "remote"
             ],
-            "description": "Whether the role is on-site, hybrid, or fully remote."
+            "description": "Whether the role is on-site, hybrid, or fully remote. **Never valid on its own:** `on_site` and `hybrid` require at least one `officeLocations` entry, and `remote` requires `remotePermits` (use `[{\"type\":\"worldwide\",\"value\":\"worldwide\"}]` for anywhere; `remoteTimezones` then auto-derives on POST). Sending it alone returns `400`."
           },
           "remotePermits": {
             "type": "array",
@@ -16713,7 +18268,7 @@
               "hybrid",
               "remote"
             ],
-            "description": "Whether the role is on-site, hybrid, or fully remote."
+            "description": "Whether the role is on-site, hybrid, or fully remote. **Never valid on its own:** `on_site` and `hybrid` require at least one `officeLocations` entry, and `remote` requires `remotePermits` (use `[{\"type\":\"worldwide\",\"value\":\"worldwide\"}]` for anywhere; `remoteTimezones` then auto-derives on POST). Sending it alone returns `400`."
           },
           "remotePermits": {
             "type": "array",
@@ -16812,20 +18367,24 @@
           },
           "salaryMin": {
             "type": "number",
+            "nullable": true,
             "minimum": 0,
-            "description": "Minimum salary, in `salaryCurrency` units."
+            "description": "Minimum salary, in `salaryCurrency` units. Pass `null` to clear the stored value; omitted means unchanged."
           },
           "salaryMax": {
             "type": "number",
+            "nullable": true,
             "minimum": 0,
-            "description": "Maximum salary, in `salaryCurrency` units."
+            "description": "Maximum salary, in `salaryCurrency` units. Pass `null` to clear the stored value; omitted means unchanged."
           },
           "salaryCurrency": {
             "type": "string",
-            "description": "Three-letter ISO 4217 currency code for `salaryMin` and `salaryMax`."
+            "nullable": true,
+            "description": "Three-letter ISO 4217 currency code for `salaryMin` and `salaryMax`. Pass `null` to clear the stored value; omitted means unchanged."
           },
           "salaryTimeframe": {
             "type": "string",
+            "nullable": true,
             "enum": [
               "per_year",
               "per_month",
@@ -16833,7 +18392,7 @@
               "per_day",
               "per_hour"
             ],
-            "description": "Period the `salaryMin` and `salaryMax` figures are quoted against."
+            "description": "Period the `salaryMin` and `salaryMax` figures are quoted against. Pass `null` to clear the stored value; omitted means unchanged."
           },
           "skills": {
             "type": "array",
@@ -16924,9 +18483,10 @@
           },
           "externalId": {
             "type": "string",
+            "nullable": true,
             "minLength": 1,
             "maxLength": 255,
-            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Use this value to look up the job later via `GET /v1/jobs?externalId=...` for deduplication. Scoped per-account: two different accounts may reuse the same `externalId` without collision. Up to 255 characters."
+            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Pass `null` to clear the stored value; omitted means unchanged."
           },
           "customFieldValues": {
             "type": "object",
@@ -16982,6 +18542,77 @@
           }
         },
         "additionalProperties": false
+      },
+      "MarketingPermission": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "marketing_permission"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "withdrawn"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "person_request",
+              "operator_request",
+              "account_deleted"
+            ]
+          },
+          "granted_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "withdrawn_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "email",
+          "display_name",
+          "role",
+          "status",
+          "source",
+          "reason",
+          "granted_at",
+          "withdrawn_at",
+          "updated_at",
+          "revision"
+        ]
       },
       "Operator": {
         "type": "object",
@@ -18933,7 +20564,10 @@
                         },
                         "frequency": {
                           "type": "string",
-                          "description": "Delivery cadence: `instant`, `daily`, or `weekly`."
+                          "enum": [
+                            "weekly"
+                          ],
+                          "description": "Weekly delivery cadence."
                         },
                         "isActive": {
                           "type": "boolean",
@@ -19617,6 +21251,2538 @@
           "capacities"
         ]
       },
+      "WebhookDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "webhook_delivery"
+            ]
+          },
+          "event_id": {
+            "type": "string",
+            "description": "Stable public event id (e.g. evt_…). Unchanged across retries and replay."
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "retrying",
+              "delivered",
+              "terminal",
+              "exhausted"
+            ]
+          },
+          "terminal_reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "http_410",
+              "permanent_response",
+              "invalid_reference",
+              "endpoint_paused",
+              "retry_attempt_limit",
+              "delivery_window_expired",
+              "retention_expired",
+              "endpoint_retired"
+            ]
+          },
+          "replayable": {
+            "type": "boolean"
+          },
+          "replay_expires_at": {
+            "type": "string"
+          },
+          "payload_purged_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempt_count": {
+            "type": "integer"
+          },
+          "next_attempt_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "first_attempt_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_attempt_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "event_id",
+          "event_type",
+          "endpoint_id",
+          "status",
+          "terminal_reason",
+          "replayable",
+          "replay_expires_at",
+          "payload_purged_at",
+          "attempt_count",
+          "next_attempt_at",
+          "first_attempt_at",
+          "last_attempt_at",
+          "completed_at",
+          "created_at"
+        ]
+      },
+      "WebhookDeliveryDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WebhookDelivery"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WebhookDeliveryAttempt"
+                }
+              }
+            },
+            "required": [
+              "attempts"
+            ]
+          }
+        ]
+      },
+      "WebhookEndpoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "webhook_endpoint"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "paused",
+              "failing"
+            ]
+          },
+          "failure_streak": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_failure_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_success_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "health_changed_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "health_reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "consecutive_failures",
+              "retry_exhausted",
+              "http_410",
+              "operator_pause",
+              "operator_resume",
+              "synthetic_recovery"
+            ]
+          },
+          "secret_overlap_expires_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "url",
+          "event_types",
+          "status",
+          "failure_streak",
+          "last_failure_at",
+          "last_success_at",
+          "health_changed_at",
+          "health_reason",
+          "secret_overlap_expires_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateWebhookEndpointBody": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "Public HTTPS URL that will receive webhook deliveries."
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "job.created",
+                "job.updated",
+                "job.deleted",
+                "company.created",
+                "company.updated",
+                "company.deleted",
+                "candidate.created",
+                "candidate.updated",
+                "candidate.deleted",
+                "marketing_permission.granted",
+                "marketing_permission.withdrawn"
+              ]
+            },
+            "minItems": 1,
+            "description": "V1 event types this endpoint subscribes to (unique)."
+          }
+        },
+        "required": [
+          "url",
+          "event_types"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookEndpointCreated": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WebhookEndpoint"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "secret": {
+                "type": "string",
+                "description": "Signing secret returned exactly once on create or rotate. Store it immediately."
+              }
+            },
+            "required": [
+              "secret"
+            ]
+          }
+        ]
+      },
+      "UpdateWebhookEndpointBody": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "job.created",
+                "job.updated",
+                "job.deleted",
+                "company.created",
+                "company.updated",
+                "company.deleted",
+                "candidate.created",
+                "candidate.updated",
+                "candidate.deleted",
+                "marketing_permission.granted",
+                "marketing_permission.withdrawn"
+              ]
+            },
+            "minItems": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "paused"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookTestDelivery": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "webhook_test_delivery"
+            ]
+          },
+          "delivered": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "number",
+            "nullable": true
+          },
+          "status_class": {
+            "type": "string"
+          },
+          "latency_ms": {
+            "type": "number"
+          },
+          "diagnostic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "delivered",
+          "status",
+          "status_class",
+          "latency_ms",
+          "diagnostic"
+        ]
+      },
+      "WebhookEventEnvelope": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Dot-delimited event type (e.g. job.created)."
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Allowlisted resource snapshot or tombstone."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Closed vocabulary of fields that changed; empty for create/delete."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEJOBCREATED",
+          "object": "event",
+          "type": "job.created",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T12:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "jobs_01EXAMPLEJOB",
+              "object": "job",
+              "slug": "senior-engineer",
+              "title": "Senior Engineer",
+              "status": "published",
+              "company_id": "companies_01EXAMPLE",
+              "company_name": "Acme",
+              "location": "Remote",
+              "employment_type": "full_time",
+              "workplace_type": "remote",
+              "published_at": "2026-07-24T12:00:00Z",
+              "expires_at": "2026-08-23T12:00:00Z",
+              "updated_at": "2026-07-24T12:00:00Z",
+              "revision": 1
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookJobSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "job"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "employment_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "workplace_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "published_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "expires_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "slug",
+          "title",
+          "status",
+          "company_id",
+          "company_name",
+          "location",
+          "employment_type",
+          "workplace_type",
+          "published_at",
+          "expires_at",
+          "updated_at",
+          "revision"
+        ],
+        "description": "V1 Job snapshot on job.created / job.updated. Explicit allowlist — never a raw row.",
+        "example": {
+          "id": "jobs_01EXAMPLEJOB",
+          "object": "job",
+          "slug": "senior-engineer",
+          "title": "Senior Engineer",
+          "status": "published",
+          "company_id": "companies_01EXAMPLE",
+          "company_name": "Acme",
+          "location": "Remote",
+          "employment_type": "full_time",
+          "workplace_type": "remote",
+          "published_at": "2026-07-24T12:00:00Z",
+          "expires_at": "2026-08-23T12:00:00Z",
+          "updated_at": "2026-07-24T12:00:00Z",
+          "revision": 1
+        }
+      },
+      "WebhookJobTombstone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "job"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "deleted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "deleted_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "company_id": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "revision",
+          "deleted",
+          "deleted_at",
+          "slug",
+          "company_id"
+        ],
+        "description": "V1 Job delete tombstone. Minimum identity to drop a downstream copy without re-fetching.",
+        "example": {
+          "id": "jobs_01EXAMPLEJOB",
+          "object": "job",
+          "revision": 3,
+          "deleted": true,
+          "deleted_at": "2026-07-24T14:00:00Z",
+          "slug": "senior-engineer",
+          "company_id": "companies_01EXAMPLE"
+        }
+      },
+      "WebhookJobChangedField": {
+        "type": "string",
+        "enum": [
+          "slug",
+          "title",
+          "status",
+          "company_id",
+          "company_name",
+          "location",
+          "employment_type",
+          "workplace_type",
+          "published_at",
+          "expires_at"
+        ],
+        "description": "A single closed Job changed_fields vocabulary member.",
+        "example": "title"
+      },
+      "WebhookJobCreatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "job.created"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "job"
+                    ]
+                  },
+                  "slug": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "company_id": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "company_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "employment_type": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "workplace_type": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "published_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "slug",
+                  "title",
+                  "status",
+                  "company_id",
+                  "company_name",
+                  "location",
+                  "employment_type",
+                  "workplace_type",
+                  "published_at",
+                  "expires_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Job snapshot on job.created / job.updated. Explicit allowlist — never a raw row."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEJOBCREATED",
+          "object": "event",
+          "type": "job.created",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T12:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "jobs_01EXAMPLEJOB",
+              "object": "job",
+              "slug": "senior-engineer",
+              "title": "Senior Engineer",
+              "status": "published",
+              "company_id": "companies_01EXAMPLE",
+              "company_name": "Acme",
+              "location": "Remote",
+              "employment_type": "full_time",
+              "workplace_type": "remote",
+              "published_at": "2026-07-24T12:00:00Z",
+              "expires_at": "2026-08-23T12:00:00Z",
+              "updated_at": "2026-07-24T12:00:00Z",
+              "revision": 1
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookJobUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "job.updated"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "job"
+                    ]
+                  },
+                  "slug": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "company_id": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "company_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "employment_type": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "workplace_type": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "published_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "slug",
+                  "title",
+                  "status",
+                  "company_id",
+                  "company_name",
+                  "location",
+                  "employment_type",
+                  "workplace_type",
+                  "published_at",
+                  "expires_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Job snapshot on job.created / job.updated. Explicit allowlist — never a raw row."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "slug",
+                    "title",
+                    "status",
+                    "company_id",
+                    "company_name",
+                    "location",
+                    "employment_type",
+                    "workplace_type",
+                    "published_at",
+                    "expires_at"
+                  ]
+                },
+                "description": "Closed Job changed_fields vocabulary for job.updated."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEJOBUPDATED",
+          "object": "event",
+          "type": "job.updated",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T13:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "jobs_01EXAMPLEJOB",
+              "object": "job",
+              "slug": "senior-engineer",
+              "title": "Staff Engineer",
+              "status": "published",
+              "company_id": "companies_01EXAMPLE",
+              "company_name": "Acme",
+              "location": "Remote",
+              "employment_type": "full_time",
+              "workplace_type": "remote",
+              "published_at": "2026-07-24T12:00:00Z",
+              "expires_at": "2026-08-23T12:00:00Z",
+              "updated_at": "2026-07-24T13:00:00Z",
+              "revision": 2
+            },
+            "changed_fields": [
+              "title"
+            ]
+          }
+        }
+      },
+      "WebhookJobDeletedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "job.deleted"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "job"
+                    ]
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "slug": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "company_id": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "revision",
+                  "deleted",
+                  "deleted_at",
+                  "slug",
+                  "company_id"
+                ],
+                "description": "V1 Job delete tombstone. Minimum identity to drop a downstream copy without re-fetching."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEJOBDELETED",
+          "object": "event",
+          "type": "job.deleted",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T14:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "jobs_01EXAMPLEJOB",
+              "object": "job",
+              "revision": 3,
+              "deleted": true,
+              "deleted_at": "2026-07-24T14:00:00Z",
+              "slug": "senior-engineer",
+              "company_id": "companies_01EXAMPLE"
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookCompanySnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "company"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "slug",
+          "name",
+          "website",
+          "logo_url",
+          "updated_at",
+          "revision"
+        ],
+        "description": "V1 Company snapshot. Explicit allowlist; no provider, enrichment, or location data.",
+        "example": {
+          "id": "companies_01EXAMPLE",
+          "object": "company",
+          "slug": "acme",
+          "name": "Acme",
+          "website": "https://acme.example",
+          "logo_url": null,
+          "updated_at": "2026-07-24T12:00:00Z",
+          "revision": 1
+        }
+      },
+      "WebhookCompanyTombstone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "company"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "deleted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "deleted_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "revision",
+          "deleted",
+          "deleted_at",
+          "slug"
+        ],
+        "description": "V1 Company deletion tombstone.",
+        "example": {
+          "id": "companies_01EXAMPLE",
+          "object": "company",
+          "revision": 3,
+          "deleted": true,
+          "deleted_at": "2026-07-24T14:00:00Z",
+          "slug": "acme"
+        }
+      },
+      "WebhookCompanyChangedField": {
+        "type": "string",
+        "enum": [
+          "slug",
+          "name",
+          "website",
+          "logo_url"
+        ],
+        "example": "name"
+      },
+      "WebhookCompanyCreatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "company.created"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "company"
+                    ]
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "website": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "logo_url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "slug",
+                  "name",
+                  "website",
+                  "logo_url",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Company snapshot. Explicit allowlist; no provider, enrichment, or location data."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECOMPANYCREATED",
+          "object": "event",
+          "type": "company.created",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T12:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "companies_01EXAMPLE",
+              "object": "company",
+              "slug": "acme",
+              "name": "Acme",
+              "website": "https://acme.example",
+              "logo_url": null,
+              "updated_at": "2026-07-24T12:00:00Z",
+              "revision": 1
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookCompanyUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "company.updated"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "company"
+                    ]
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "website": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "logo_url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "slug",
+                  "name",
+                  "website",
+                  "logo_url",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Company snapshot. Explicit allowlist; no provider, enrichment, or location data."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "slug",
+                    "name",
+                    "website",
+                    "logo_url"
+                  ]
+                },
+                "description": "Closed Company changed_fields vocabulary for company.updated."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECOMPANYUPDATED",
+          "object": "event",
+          "type": "company.updated",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T13:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "companies_01EXAMPLE",
+              "object": "company",
+              "slug": "acme",
+              "name": "Acme Corporation",
+              "website": "https://acme.example",
+              "logo_url": null,
+              "updated_at": "2026-07-24T13:00:00Z",
+              "revision": 2
+            },
+            "changed_fields": [
+              "name"
+            ]
+          }
+        }
+      },
+      "WebhookCompanyDeletedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "company.deleted"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "company"
+                    ]
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "slug": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "revision",
+                  "deleted",
+                  "deleted_at",
+                  "slug"
+                ],
+                "description": "V1 Company deletion tombstone."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECOMPANYDELETED",
+          "object": "event",
+          "type": "company.deleted",
+          "schema_version": "1",
+          "occurred_at": "2026-07-24T14:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "companies_01EXAMPLE",
+              "object": "company",
+              "revision": 3,
+              "deleted": true,
+              "deleted_at": "2026-07-24T14:00:00Z",
+              "slug": "acme"
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookCandidateSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "candidate"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "email",
+          "display_name",
+          "created_at",
+          "updated_at",
+          "revision"
+        ],
+        "description": "V1 Candidate snapshot. Explicit identity allowlist; never resumes, applications, private profile data, or marketing permission.",
+        "example": {
+          "id": "boardUsers_01EXAMPLE",
+          "object": "candidate",
+          "email": "candidate@example.test",
+          "display_name": "Example Candidate",
+          "created_at": "2026-08-03T12:00:00Z",
+          "updated_at": "2026-08-03T12:00:00Z",
+          "revision": 1
+        }
+      },
+      "WebhookCandidateTombstone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "candidate"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "deleted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "deleted_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "revision",
+          "deleted",
+          "deleted_at",
+          "email"
+        ],
+        "description": "V1 Candidate permanent-erasure tombstone.",
+        "example": {
+          "id": "boardUsers_01EXAMPLE",
+          "object": "candidate",
+          "revision": 3,
+          "deleted": true,
+          "deleted_at": "2026-08-03T14:00:00Z",
+          "email": "candidate@example.test"
+        }
+      },
+      "WebhookCandidateChangedField": {
+        "type": "string",
+        "enum": [
+          "email",
+          "display_name"
+        ],
+        "example": "display_name"
+      },
+      "WebhookCandidateCreatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "candidate.created"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "candidate"
+                    ]
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "email",
+                  "display_name",
+                  "created_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Candidate snapshot. Explicit identity allowlist; never resumes, applications, private profile data, or marketing permission."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECANDIDATECREATED",
+          "object": "event",
+          "type": "candidate.created",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T12:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "candidate",
+              "email": "candidate@example.test",
+              "display_name": "Example Candidate",
+              "created_at": "2026-08-03T12:00:00Z",
+              "updated_at": "2026-08-03T12:00:00Z",
+              "revision": 1
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookCandidateUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "candidate.updated"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "candidate"
+                    ]
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "email",
+                  "display_name",
+                  "created_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 Candidate snapshot. Explicit identity allowlist; never resumes, applications, private profile data, or marketing permission."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "email",
+                    "display_name"
+                  ]
+                },
+                "description": "Closed Candidate changed_fields vocabulary for candidate.updated."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECANDIDATEUPDATED",
+          "object": "event",
+          "type": "candidate.updated",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T13:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "candidate",
+              "email": "candidate@example.test",
+              "display_name": "Updated Candidate",
+              "created_at": "2026-08-03T12:00:00Z",
+              "updated_at": "2026-08-03T13:00:00Z",
+              "revision": 2
+            },
+            "changed_fields": [
+              "display_name"
+            ]
+          }
+        }
+      },
+      "WebhookCandidateDeletedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "candidate.deleted"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "candidate"
+                    ]
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "revision",
+                  "deleted",
+                  "deleted_at",
+                  "email"
+                ],
+                "description": "V1 Candidate permanent-erasure tombstone."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0,
+                "description": "Empty for create/delete events."
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECANDIDATEDELETED",
+          "object": "event",
+          "type": "candidate.deleted",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T14:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "candidate",
+              "revision": 3,
+              "deleted": true,
+              "deleted_at": "2026-08-03T14:00:00Z",
+              "email": "candidate@example.test"
+            },
+            "changed_fields": []
+          }
+        }
+      },
+      "WebhookMarketingPermissionSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "marketing_permission"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "display_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "withdrawn"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "person_request",
+              "operator_request",
+              "account_deleted"
+            ]
+          },
+          "granted_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "withdrawn_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "email",
+          "display_name",
+          "role",
+          "status",
+          "source",
+          "reason",
+          "granted_at",
+          "withdrawn_at",
+          "updated_at",
+          "revision"
+        ],
+        "description": "V1 marketing-permission reconciliation snapshot, projected from the board user. Explicit allowlist; never credentials, tokens, or private Candidate data.",
+        "example": {
+          "id": "boardUsers_01EXAMPLE",
+          "object": "marketing_permission",
+          "email": "person@example.test",
+          "display_name": "Example Person",
+          "role": "candidate",
+          "status": "granted",
+          "source": "candidate_sign_up",
+          "reason": null,
+          "granted_at": "2026-08-03T15:00:00Z",
+          "withdrawn_at": null,
+          "updated_at": "2026-08-03T15:00:00Z",
+          "revision": 1
+        }
+      },
+      "WebhookMarketingPermissionChangedField": {
+        "type": "string",
+        "enum": [
+          "status",
+          "source",
+          "reason",
+          "granted_at",
+          "withdrawn_at"
+        ],
+        "example": "status"
+      },
+      "WebhookMarketingPermissionGrantedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "marketing_permission.granted"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "marketing_permission"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "granted",
+                      "withdrawn"
+                    ]
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      "person_request",
+                      "operator_request",
+                      "account_deleted"
+                    ]
+                  },
+                  "granted_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "withdrawn_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "email",
+                  "display_name",
+                  "role",
+                  "status",
+                  "source",
+                  "reason",
+                  "granted_at",
+                  "withdrawn_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 marketing-permission reconciliation snapshot, projected from the board user. Explicit allowlist; never credentials, tokens, or private Candidate data."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "status",
+                    "source",
+                    "reason",
+                    "granted_at",
+                    "withdrawn_at"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEMARKETINGGRANT",
+          "object": "event",
+          "type": "marketing_permission.granted",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T15:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "marketing_permission",
+              "email": "person@example.test",
+              "display_name": "Example Person",
+              "role": "candidate",
+              "status": "granted",
+              "source": "candidate_sign_up",
+              "reason": null,
+              "granted_at": "2026-08-03T15:00:00Z",
+              "withdrawn_at": null,
+              "updated_at": "2026-08-03T15:00:00Z",
+              "revision": 1
+            },
+            "changed_fields": [
+              "status",
+              "source",
+              "granted_at"
+            ]
+          }
+        }
+      },
+      "WebhookMarketingPermissionWithdrawnEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "marketing_permission.withdrawn"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": [
+                      "marketing_permission"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "granted",
+                      "withdrawn"
+                    ]
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      "person_request",
+                      "operator_request",
+                      "account_deleted"
+                    ]
+                  },
+                  "granted_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "withdrawn_at": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "email",
+                  "display_name",
+                  "role",
+                  "status",
+                  "source",
+                  "reason",
+                  "granted_at",
+                  "withdrawn_at",
+                  "updated_at",
+                  "revision"
+                ],
+                "description": "V1 marketing-permission reconciliation snapshot, projected from the board user. Explicit allowlist; never credentials, tokens, or private Candidate data."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "status",
+                    "source",
+                    "reason",
+                    "granted_at",
+                    "withdrawn_at"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "object",
+              "changed_fields"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLEMARKETINGWITHDRAWAL",
+          "object": "event",
+          "type": "marketing_permission.withdrawn",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T16:00:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "marketing_permission",
+              "email": "person@example.test",
+              "display_name": "Example Person",
+              "role": "candidate",
+              "status": "withdrawn",
+              "source": "notification_preferences",
+              "reason": "person_request",
+              "granted_at": "2026-08-03T15:00:00Z",
+              "withdrawn_at": "2026-08-03T16:00:00Z",
+              "updated_at": "2026-08-03T16:00:00Z",
+              "revision": 2
+            },
+            "changed_fields": [
+              "status",
+              "source",
+              "reason",
+              "withdrawn_at"
+            ]
+          }
+        }
+      },
       "AnalyticsDateRange": {
         "type": "object",
         "properties": {
@@ -20292,7 +24458,7 @@
           "name"
         ],
         "additionalProperties": false,
-        "description": "An inline company payload, resolved via `find-or-create` before the job is created. Provide either `company` or `companyId`, not both."
+        "description": "An inline company payload, resolved via `find-or-create` before the job is created. **Required unless you supply `companyId`** — exactly one of the two must be present, and supplying both is an error."
       },
       "JobCompany": {
         "type": "object",
@@ -20812,6 +24978,48 @@
           "used",
           "limit",
           "remaining"
+        ]
+      },
+      "WebhookDeliveryAttempt": {
+        "type": "object",
+        "properties": {
+          "attempt_number": {
+            "type": "integer"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "delivered",
+              "retryable",
+              "terminal"
+            ]
+          },
+          "status_code": {
+            "type": "integer",
+            "nullable": true
+          },
+          "status_class": {
+            "type": "string"
+          },
+          "diagnostic": {
+            "type": "string",
+            "description": "Sanitized diagnostic recorded at attempt time. Never a response body or secret."
+          }
+        },
+        "required": [
+          "attempt_number",
+          "started_at",
+          "duration_ms",
+          "outcome",
+          "status_code",
+          "status_class",
+          "diagnostic"
         ]
       },
       "AnalyticsChange": {
