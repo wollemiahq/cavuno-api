@@ -2799,6 +2799,55 @@
       }
     },
     "/candidates": {
+      "post": {
+        "summary": "Create a candidate",
+        "description": "Creates a passwordless candidate. Magic link is the default activation. An optional initial profile is seeded once. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCandidateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Candidate created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is already registered to another board user on this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "createCandidate"
+      },
       "get": {
         "summary": "List candidates",
         "description": "Returns the candidates (board users with role `candidate`) of the authenticated account. Per-candidate saved-job and alert counts are not inlined here. Fetch them via `GET /v1/candidates/{id}`. Requires `candidates.read`.",
@@ -3094,6 +3143,204 @@
         "x-audience": "operator",
         "tags": ["Candidates"],
         "operationId": "deleteCandidate"
+      },
+      "patch": {
+        "summary": "Update a candidate",
+        "description": "Updates the candidate email and/or display name. Omitted fields are left unchanged. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCandidateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is already registered to another board user on this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "updateCandidate"
+      }
+    },
+    "/candidates/{id}/profile": {
+      "get": {
+        "summary": "Get a candidate profile snapshot",
+        "description": "Returns the canonical candidate sync snapshot: identity, profile scalars, and collections. Excludes credentials, resume storage internals, applications, messages, saved jobs, and consent state. Requires `candidates.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSyncSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Candidate has more related records than this endpoint supports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "getCandidateProfile"
+      },
+      "put": {
+        "summary": "Replace a candidate profile",
+        "description": "Replaces the selected profile projection. The write body is a desired-state projection, not the GET response shape: scalars are top-level, and read-only fields are rejected. Absent keys are left unchanged; `null` on a scalar clears it; providing a collection array replaces that collection wholesale (empty array clears). Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateProfileProjection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSyncSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Candidate has more related records than this endpoint supports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "updateCandidateProfile"
       }
     },
     "/candidates/{id}/resume": {
@@ -14831,79 +15078,32 @@
         },
         "additionalProperties": false
       },
-      "Candidate": {
+      "CreateCandidateBody": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for the candidate."
-          },
-          "object": {
-            "type": "string",
-            "enum": ["candidate"],
-            "description": "String representing the object's type."
-          },
           "email": {
             "type": "string",
-            "description": "The candidate's email address."
+            "format": "email",
+            "description": "The candidate's email address. Must be unique on the account."
           },
           "displayName": {
             "type": "string",
-            "nullable": true,
+            "minLength": 1,
             "description": "The candidate's display name."
           },
-          "handle": {
-            "type": "string",
-            "nullable": true,
-            "description": "Public-profile handle, or `null`."
-          },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true,
-            "description": "Avatar URL, or `null`."
-          },
-          "hasResume": {
-            "type": "boolean",
-            "description": "Whether a resume is on file. On list rows this reflects the stored pointer; on the single-candidate detail it reflects the resolved blob (always agrees with `resume !== null`), so the two can briefly disagree if a stored file was garbage-collected."
-          },
-          "createdAt": {
-            "type": "string",
-            "description": "ISO-8601 timestamp of when the candidate registered."
-          },
-          "candidateCreatedAt": {
-            "type": "string",
-            "description": "ISO-8601 timestamp when this Board user became an operator-visible Candidate. This is the reconciliation counterpart of candidate.created, not newsletter permission."
-          },
-          "updatedAt": {
-            "type": "string",
-            "nullable": true,
-            "description": "ISO-8601 timestamp of the latest approved Candidate identity update, or null for older rows."
-          },
-          "revision": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Monotonic Candidate lifecycle revision; legacy rows are 0 until the rollout migration runs."
-          },
-          "lastActiveAt": {
-            "type": "string",
-            "nullable": true,
-            "description": "ISO-8601 timestamp of the last sign-in, or `null`."
+          "profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CandidateProfileProjection"
+              },
+              {
+                "description": "Optional initial profile projection. Seeded once at create; the Candidate owns it afterwards unless a later sync source claims the group. Absent keys are left unset; `null` on a scalar clears it."
+              }
+            ]
           }
         },
-        "required": [
-          "id",
-          "object",
-          "email",
-          "displayName",
-          "handle",
-          "avatarUrl",
-          "hasResume",
-          "createdAt",
-          "candidateCreatedAt",
-          "updatedAt",
-          "revision",
-          "lastActiveAt"
-        ]
+        "required": ["email", "displayName"],
+        "additionalProperties": false
       },
       "CandidateDetail": {
         "allOf": [
@@ -15001,6 +15201,247 @@
             "required": ["profile", "savedJobCount", "alertCount", "resume"]
           }
         ]
+      },
+      "Candidate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the candidate."
+          },
+          "object": {
+            "type": "string",
+            "enum": ["candidate"],
+            "description": "String representing the object's type."
+          },
+          "email": {
+            "type": "string",
+            "description": "The candidate's email address."
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The candidate's display name."
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "Public-profile handle, or `null`."
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Avatar URL, or `null`."
+          },
+          "hasResume": {
+            "type": "boolean",
+            "description": "Whether a resume is on file. On list rows this reflects the stored pointer; on the single-candidate detail it reflects the resolved blob (always agrees with `resume !== null`), so the two can briefly disagree if a stored file was garbage-collected."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO-8601 timestamp of when the candidate registered."
+          },
+          "candidateCreatedAt": {
+            "type": "string",
+            "description": "ISO-8601 timestamp when this Board user became an operator-visible Candidate. This is the reconciliation counterpart of candidate.created, not newsletter permission."
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 timestamp of the latest approved Candidate identity update, or null for older rows."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic Candidate lifecycle revision; legacy rows are 0 until the rollout migration runs."
+          },
+          "lastActiveAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 timestamp of the last sign-in, or `null`."
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "email",
+          "displayName",
+          "handle",
+          "avatarUrl",
+          "hasResume",
+          "createdAt",
+          "candidateCreatedAt",
+          "updatedAt",
+          "revision",
+          "lastActiveAt"
+        ]
+      },
+      "UpdateCandidateBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Absent key leaves the stored email unchanged. The new address must be unique on the account."
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absent key leaves the stored display name unchanged."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CandidateSyncSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the candidate."
+          },
+          "email": {
+            "type": "string",
+            "description": "The candidate's email address."
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The candidate's display name."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic Candidate lifecycle revision."
+          },
+          "profileRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic profile-projection revision."
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when sign-in was disabled, or `null` when active."
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "headline": {
+                "type": "string",
+                "nullable": true
+              },
+              "bio": {
+                "type": "string",
+                "nullable": true
+              },
+              "location": {
+                "type": "string",
+                "nullable": true
+              },
+              "countryCode": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": ["headline", "bio", "location", "countryCode"]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotLanguage"
+            }
+          },
+          "experience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotExperience"
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotEducation"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "revision",
+          "profileRevision",
+          "deactivatedAt",
+          "profile",
+          "skills",
+          "languages",
+          "experience",
+          "education"
+        ]
+      },
+      "CandidateProfileProjection": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored headline unchanged; `null` clears it."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored bio unchanged; `null` clears it."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored location unchanged; `null` clears it."
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored country code unchanged; `null` clears it."
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "description": "Absent key leaves the stored skills unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 200 rows."
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileLanguageProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored languages unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          },
+          "experience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileExperienceProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored experience unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileEducationProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored education unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          }
+        },
+        "additionalProperties": false
       },
       "CompanySummary": {
         "type": "object",
@@ -19104,6 +19545,14 @@
             "type": "boolean",
             "description": "Whether candidates can subscribe to email alerts for new jobs."
           },
+          "jobRecommendationsEnabled": {
+            "type": "boolean",
+            "description": "Whether signed-in candidates can see personalized job recommendations. Absent board config defaults to `true`."
+          },
+          "recommendedTalentEnabled": {
+            "type": "boolean",
+            "description": "Whether employers can see recommended talent matches for their jobs. Absent board config defaults to `false`."
+          },
           "candidatesEnabled": {
             "type": "boolean",
             "description": "Whether candidate profiles are enabled on the board."
@@ -20491,6 +20940,7 @@
                 "candidate.created",
                 "candidate.updated",
                 "candidate.deleted",
+                "candidate.profile.updated",
                 "marketing_permission.granted",
                 "marketing_permission.withdrawn"
               ]
@@ -20541,6 +20991,7 @@
                 "candidate.created",
                 "candidate.updated",
                 "candidate.deleted",
+                "candidate.profile.updated",
                 "marketing_permission.granted",
                 "marketing_permission.withdrawn"
               ]
@@ -22270,6 +22721,141 @@
           }
         }
       },
+      "WebhookCandidateProfilePointer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["candidate.profile"]
+          },
+          "profile_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": ["id", "object", "profile_revision"],
+        "description": "Thin pointer for candidate.profile.updated. No profile values; pull GET /v1/candidates/{id}/profile and reject a stale profile_revision.",
+        "example": {
+          "id": "boardUsers_01EXAMPLE",
+          "object": "candidate.profile",
+          "profile_revision": 1
+        }
+      },
+      "WebhookCandidateProfileChangedField": {
+        "type": "string",
+        "enum": [
+          "profile.headline",
+          "profile.bio",
+          "profile.location",
+          "profile.country_code",
+          "skills",
+          "languages",
+          "experience",
+          "education"
+        ],
+        "example": "profile.headline"
+      },
+      "WebhookCandidateProfileUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": ["event"]
+          },
+          "type": {
+            "type": "string",
+            "enum": ["candidate.profile.updated"]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": ["1"]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": ["candidate.profile"]
+                  },
+                  "profile_revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": ["id", "object", "profile_revision"],
+                "description": "Thin pointer for candidate.profile.updated. No profile values; pull GET /v1/candidates/{id}/profile and reject a stale profile_revision."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "profile.headline",
+                    "profile.bio",
+                    "profile.location",
+                    "profile.country_code",
+                    "skills",
+                    "languages",
+                    "experience",
+                    "education"
+                  ]
+                },
+                "description": "Closed Candidate profile changed_fields vocabulary for candidate.profile.updated."
+              }
+            },
+            "required": ["object", "changed_fields"]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "description": "Common outbound webhook event envelope.",
+        "example": {
+          "id": "evt_01EXAMPLECANDIDATEPROFILE",
+          "object": "event",
+          "type": "candidate.profile.updated",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T13:30:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "candidate.profile",
+              "profile_revision": 1
+            },
+            "changed_fields": ["profile.headline", "skills"]
+          }
+        }
+      },
       "WebhookMarketingPermissionSnapshot": {
         "type": "object",
         "properties": {
@@ -23071,6 +23657,289 @@
         "required": ["downloadUrl", "contentType", "sizeBytes"],
         "description": "Protected download path and metadata for the uploaded resume, or `null` when no resume is on file (or the storage blob is missing)."
       },
+      "CandidateSyncSnapshotLanguage": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "proficiency": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": ["name", "proficiency", "sortOrder"]
+      },
+      "CandidateSyncSnapshotExperience": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "companyUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "employmentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationType": {
+            "type": "string",
+            "nullable": true
+          },
+          "foundVia": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "experienceSkills": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "companyName",
+          "companyUrl",
+          "location",
+          "employmentType",
+          "locationType",
+          "foundVia",
+          "startDate",
+          "endDate",
+          "description",
+          "experienceSkills",
+          "sortOrder"
+        ]
+      },
+      "CandidateSyncSnapshotEducation": {
+        "type": "object",
+        "properties": {
+          "institutionName": {
+            "type": "string"
+          },
+          "institutionUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldOfStudy": {
+            "type": "string",
+            "nullable": true
+          },
+          "grade": {
+            "type": "string",
+            "nullable": true
+          },
+          "activitiesAndSocieties": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "institutionName",
+          "institutionUrl",
+          "degree",
+          "fieldOfStudy",
+          "grade",
+          "activitiesAndSocieties",
+          "startDate",
+          "endDate",
+          "description",
+          "sortOrder"
+        ]
+      },
+      "CandidateProfileLanguageProjection": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Language name."
+          },
+          "proficiency": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Proficiency label."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["name", "proficiency", "sortOrder"],
+        "additionalProperties": false
+      },
+      "CandidateProfileExperienceProjection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Job title."
+          },
+          "companyName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Employer name."
+          },
+          "companyUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Employer URL."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Role location."
+          },
+          "employmentType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Employment type."
+          },
+          "locationType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Location type."
+          },
+          "foundVia": {
+            "type": "string",
+            "nullable": true,
+            "description": "How the role was found."
+          },
+          "startDate": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Start date."
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "End date."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Role description."
+          },
+          "experienceSkills": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "description": "Per-role skills; replaced with the row."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["title", "companyName", "startDate", "sortOrder"],
+        "additionalProperties": false
+      },
+      "CandidateProfileEducationProjection": {
+        "type": "object",
+        "properties": {
+          "institutionName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Institution name."
+          },
+          "institutionUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Institution URL."
+          },
+          "degree": {
+            "type": "string",
+            "nullable": true,
+            "description": "Degree awarded."
+          },
+          "fieldOfStudy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Field of study."
+          },
+          "grade": {
+            "type": "string",
+            "nullable": true,
+            "description": "Grade or GPA."
+          },
+          "activitiesAndSocieties": {
+            "type": "string",
+            "nullable": true,
+            "description": "Activities and societies."
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Start date."
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "End date."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Education description."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["institutionName", "sortOrder"],
+        "additionalProperties": false
+      },
       "ResourceLinks": {
         "type": "object",
         "properties": {
@@ -23487,6 +24356,12 @@
           "jobAlertsEnabled": {
             "type": "boolean"
           },
+          "jobRecommendationsEnabled": {
+            "type": "boolean"
+          },
+          "recommendedTalentEnabled": {
+            "type": "boolean"
+          },
           "candidatesEnabled": {
             "type": "boolean"
           },
@@ -23585,6 +24460,7 @@
             "enum": ["off", "public", "employers_only"]
           }
         },
+        "required": ["jobRecommendationsEnabled", "recommendedTalentEnabled"],
         "additionalProperties": false
       },
       "SettingsAdsenseSlot": {
