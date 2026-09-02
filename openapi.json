@@ -2799,6 +2799,55 @@
       }
     },
     "/candidates": {
+      "post": {
+        "summary": "Create a candidate",
+        "description": "Creates a passwordless candidate. Magic link is the default activation. An optional initial profile is seeded once. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCandidateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Candidate created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is already registered to another board user on this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "createCandidate"
+      },
       "get": {
         "summary": "List candidates",
         "description": "Returns the candidates (board users with role `candidate`) of the authenticated account. Per-candidate saved-job and alert counts are not inlined here. Fetch them via `GET /v1/candidates/{id}`. Requires `candidates.read`.",
@@ -3012,6 +3061,57 @@
         "operationId": "exportCandidates"
       }
     },
+    "/candidates/reconcile": {
+      "post": {
+        "summary": "Reconcile a candidate from a membership source",
+        "description": "Body-keyed membership sync. `sourceKey` + `externalMemberId` identify the member; they stay in the body because request paths land in logs. `sourceRevision` orders writes: equal is a no-op, lower is rejected. Creates, links, or updates the Candidate and optionally applies a profile projection. Pair this push with the `candidate.profile.updated` webhook and `GET /candidates/{id}/profile` pull. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied; equal source revisions are also idempotent without the header.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileCandidateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Candidate reconciled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReconcileResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is taken, a newer source revision has already been applied, this candidate is already linked to a different member id for this source, or `sandbox_persona_protected` when a reconcile changes a persona's email or deactivates a persona on a sandbox board.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "reconcileCandidate"
+      }
+    },
     "/candidates/{id}": {
       "get": {
         "summary": "Get a candidate",
@@ -3094,6 +3194,302 @@
         "x-audience": "operator",
         "tags": ["Candidates"],
         "operationId": "deleteCandidate"
+      },
+      "patch": {
+        "summary": "Update a candidate",
+        "description": "Updates the candidate email and/or display name. Omitted fields are left unchanged. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCandidateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is already registered to another board user on this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "updateCandidate"
+      }
+    },
+    "/candidates/{id}/deactivate": {
+      "post": {
+        "summary": "Deactivate a candidate",
+        "description": "Disables sign-in, revokes all sessions, and hides the profile from talent surfaces. Profile and application history are preserved for a later reactivate. Idempotent: an already-deactivated candidate returns 200 with the unchanged detail. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Candidate deactivated. `deactivatedAt` is set. Sign-in is blocked, sessions are revoked, and the profile is hidden from talent surfaces.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sandbox persona accounts cannot have their lifecycle changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "deactivateCandidate"
+      }
+    },
+    "/candidates/{id}/profile": {
+      "get": {
+        "summary": "Get a candidate profile snapshot",
+        "description": "Returns the canonical candidate sync snapshot: identity, profile scalars, and collections. Excludes credentials, resume storage internals, applications, messages, saved jobs, and consent state. Requires `candidates.read`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSyncSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Candidate has more related records than this endpoint supports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "getCandidateProfile"
+      },
+      "put": {
+        "summary": "Replace a candidate profile",
+        "description": "Replaces the selected profile projection. The write body is a desired-state projection, not the GET response shape: scalars are top-level, and read-only fields are rejected. Absent keys are left unchanged; `null` on a scalar clears it; providing a collection array replaces that collection wholesale (empty array clears). Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateProfileProjection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSyncSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Candidate has more related records than this endpoint supports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "updateCandidateProfile"
+      }
+    },
+    "/candidates/{id}/reactivate": {
+      "post": {
+        "summary": "Reactivate a candidate",
+        "description": "Restores sign-in, session access, and talent-surface visibility for a previously deactivated candidate. Profile and application history were preserved by deactivate. Idempotent: an already-active candidate returns 200 with the unchanged detail. Requires `candidates.manage`. The request is idempotent when an `Idempotency-Key` header is supplied.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The candidate id."
+            },
+            "required": true,
+            "description": "The candidate id.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Candidate reactivated. `deactivatedAt` is `null`. Sign-in, session access, and talent-surface visibility are restored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Candidates"],
+        "operationId": "reactivateCandidate"
       }
     },
     "/candidates/{id}/resume": {
@@ -10360,59 +10756,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "allOf": [
-                          {
-                            "$ref": "#/components/schemas/Alert"
-                          },
-                          {
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "description": "Unique identifier for the alert."
-                              },
-                              "object": {
-                                "type": "string",
-                                "enum": ["alert"],
-                                "description": "String representing the object's type."
-                              },
-                              "subscriberId": {
-                                "type": "string",
-                                "description": "Identifier of the subscriber that owns this alert."
-                              },
-                              "filters": {
-                                "nullable": true,
-                                "description": "The job-filter criteria the alert matches against."
-                              },
-                              "frequency": {
-                                "type": "string",
-                                "enum": ["weekly"],
-                                "description": "Weekly delivery cadence."
-                              },
-                              "isActive": {
-                                "type": "boolean",
-                                "description": "Whether the alert is currently active."
-                              },
-                              "lastSentAt": {
-                                "type": "string",
-                                "nullable": true,
-                                "description": "ISO-8601 timestamp of the last dispatch, or `null`."
-                              },
-                              "createdAt": {
-                                "type": "string",
-                                "description": "ISO-8601 timestamp of when the alert was created."
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "object",
-                              "subscriberId",
-                              "frequency",
-                              "isActive",
-                              "lastSentAt",
-                              "createdAt"
-                            ]
-                          }
-                        ]
+                        "$ref": "#/components/schemas/SubscriberAlert"
                       }
                     }
                   },
@@ -14831,6 +15175,72 @@
         },
         "additionalProperties": false
       },
+      "CreateCandidateBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "The candidate's email address. Must be unique on the account."
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The candidate's display name."
+          },
+          "profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CandidateProfileProjection"
+              },
+              {
+                "description": "Optional initial profile projection. Seeded once at create; the Candidate owns it afterwards unless a later sync source claims the group. Absent keys are left unset; `null` on a scalar clears it."
+              }
+            ]
+          }
+        },
+        "required": ["email", "displayName"],
+        "additionalProperties": false
+      },
+      "CandidateDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Candidate"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deactivatedAt": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "description": "ISO 8601 timestamp when sign-in was disabled, or `null` when the candidate can sign in. Deactivate revokes all sessions, blocks sign-in, and hides the profile from talent surfaces; profile and application history are preserved. Reactivate restores sign-in and talent-surface visibility; the candidate signs in again to establish a new session."
+              },
+              "profile": {
+                "$ref": "#/components/schemas/AdminCandidateProfile"
+              },
+              "savedJobCount": {
+                "type": "number",
+                "description": "Number of jobs the candidate has saved. Values are capped at 1,000 in write-operation responses (reconcile/deactivate/reactivate/create/update); GET detail returns 422 `candidate_resource_limit` beyond the cap."
+              },
+              "alertCount": {
+                "type": "number",
+                "description": "Number of job alerts the candidate has. Values are capped at 1,000 in write-operation responses (reconcile/deactivate/reactivate/create/update); GET detail returns 422 `candidate_resource_limit` beyond the cap."
+              },
+              "resume": {
+                "$ref": "#/components/schemas/CandidateResumeFile"
+              }
+            },
+            "required": [
+              "deactivatedAt",
+              "profile",
+              "savedJobCount",
+              "alertCount",
+              "resume"
+            ]
+          }
+        ]
+      },
       "Candidate": {
         "type": "object",
         "properties": {
@@ -14905,102 +15315,250 @@
           "lastActiveAt"
         ]
       },
-      "CandidateDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Candidate"
+      "ReconcileCandidateBody": {
+        "type": "object",
+        "properties": {
+          "sourceKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9._-]+$",
+            "description": "Opaque caller-chosen identifier for the membership system this write comes from (1–64 characters, `[a-z0-9._-]`). Identifies the source, not the person, and must stay stable: changing it treats the caller as a new source and cannot update an existing link."
           },
-          {
+          "externalMemberId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "The member id in the caller's system (1–256 characters). Sent in the body, never the URL: request paths land in logs and traces. Together with `sourceKey` this is the idempotent membership-sync key."
+          },
+          "sourceRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Monotonically increasing revision per member, typically the source system's change timestamp in milliseconds. An equal revision is an idempotent no-op (`unchanged`); a lower revision is rejected as stale so a delayed write can never resurrect stale profile data or reactivate a deactivated account. Revisions above 2^53-1 are rejected."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "The candidate's email address. Used to create or link the Board user for this membership source."
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The candidate's display name."
+          },
+          "profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CandidateProfileProjection"
+              },
+              {
+                "description": "Optional bounded profile projection, the same shape as `PUT /candidates/{id}/profile`. Absent keys are left unchanged; `null` on a scalar clears it; a provided collection array replaces that collection wholesale. Pair with `candidate.profile.updated` and `GET /candidates/{id}/profile` for notification-plus-pull."
+              }
+            ]
+          },
+          "active": {
+            "type": "boolean",
+            "description": "When `false`, deactivates the candidate (sign-in disabled, sessions revoked, profile hidden from talent surfaces). When `true`, restores sign-in and talent-surface visibility; the candidate signs in again to establish a new session. Profile and application history are preserved either way."
+          }
+        },
+        "required": [
+          "sourceKey",
+          "externalMemberId",
+          "sourceRevision",
+          "email",
+          "displayName",
+          "active"
+        ],
+        "additionalProperties": false
+      },
+      "CandidateReconcileResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["created", "updated", "unchanged", "upgraded"],
+            "description": "`created` when a new Candidate is provisioned, `updated` when identity or profile changed, `unchanged` when the source revision was already applied, `upgraded` when an existing non-candidate Board user became a Candidate."
+          },
+          "candidate": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CandidateDetail"
+              },
+              {
+                "description": "The candidate after this reconcile, same serialization as `GET /candidates/{id}` (including `deactivatedAt`)."
+              }
+            ]
+          }
+        },
+        "required": ["status", "candidate"]
+      },
+      "UpdateCandidateBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Absent key leaves the stored email unchanged. The new address must be unique on the account."
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absent key leaves the stored display name unchanged."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CandidateSyncSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the candidate."
+          },
+          "email": {
+            "type": "string",
+            "description": "The candidate's email address."
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The candidate's display name."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic Candidate lifecycle revision."
+          },
+          "profileRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic profile-projection revision."
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when sign-in was disabled, or `null` when active."
+          },
+          "profile": {
             "type": "object",
             "properties": {
-              "profile": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/CandidateProfile"
-                  },
-                  {
-                    "nullable": true,
-                    "properties": {
-                      "headline": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "location": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "bio": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "jobSearchStatus": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "profileVisibility": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "openToRelocate": {
-                        "type": "boolean",
-                        "nullable": true
-                      },
-                      "seniority": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "skills": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "workingPermits": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "interestedRoles": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "required": [
-                      "headline",
-                      "location",
-                      "bio",
-                      "jobSearchStatus",
-                      "profileVisibility",
-                      "openToRelocate",
-                      "seniority",
-                      "skills",
-                      "workingPermits",
-                      "interestedRoles"
-                    ],
-                    "description": "Admin-visible profile detail, or `null` when no profile exists."
-                  }
-                ]
+              "headline": {
+                "type": "string",
+                "nullable": true
               },
-              "savedJobCount": {
-                "type": "number",
-                "description": "Number of jobs the candidate has saved."
+              "bio": {
+                "type": "string",
+                "nullable": true
               },
-              "alertCount": {
-                "type": "number",
-                "description": "Number of job alerts the candidate has."
+              "location": {
+                "type": "string",
+                "nullable": true
               },
-              "resume": {
-                "$ref": "#/components/schemas/CandidateResumeFile"
+              "countryCode": {
+                "type": "string",
+                "nullable": true
               }
             },
-            "required": ["profile", "savedJobCount", "alertCount", "resume"]
+            "required": ["headline", "bio", "location", "countryCode"]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotLanguage"
+            }
+          },
+          "experience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotExperience"
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateSyncSnapshotEducation"
+            }
           }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "revision",
+          "profileRevision",
+          "deactivatedAt",
+          "profile",
+          "skills",
+          "languages",
+          "experience",
+          "education"
         ]
+      },
+      "CandidateProfileProjection": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored headline unchanged; `null` clears it."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored bio unchanged; `null` clears it."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored location unchanged; `null` clears it."
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent key leaves the stored country code unchanged; `null` clears it."
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "description": "Absent key leaves the stored skills unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 200 rows."
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileLanguageProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored languages unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          },
+          "experience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileExperienceProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored experience unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateProfileEducationProjection"
+            },
+            "maxItems": 50,
+            "description": "Absent key leaves the stored education unchanged. Providing an array replaces the collection wholesale (empty array clears). Maximum 50 rows."
+          }
+        },
+        "additionalProperties": false
       },
       "CompanySummary": {
         "type": "object",
@@ -15851,41 +16409,7 @@
           "companies": {
             "type": "array",
             "items": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/EmployerCompany"
-                },
-                {
-                  "properties": {
-                    "companyId": {
-                      "type": "string"
-                    },
-                    "companyName": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "description": "Membership status (e.g. `approved`)."
-                    },
-                    "approvalSource": {
-                      "type": "string",
-                      "nullable": true,
-                      "description": "How the membership was approved (`domain_match` | `work_email_verification` | `admin` | `owner_creation`), or `null`."
-                    },
-                    "joinedAt": {
-                      "type": "string",
-                      "description": "ISO-8601 timestamp the membership was created."
-                    }
-                  },
-                  "required": [
-                    "companyId",
-                    "companyName",
-                    "status",
-                    "approvalSource",
-                    "joinedAt"
-                  ]
-                }
-              ]
+              "$ref": "#/components/schemas/EmployerApprovedCompany"
             },
             "description": "Approved company memberships."
           },
@@ -16966,9 +17490,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Job expiry as a Unix epoch in milliseconds. On create, omitted or `null` defaults to 30 days from creation. On PATCH, pass `null` to clear an existing expiry. Past timestamps remove the job from the public board."
@@ -17017,7 +17538,7 @@
             "items": {
               "$ref": "#/components/schemas/JobOfficeLocationInput"
             },
-            "description": "Physical office locations associated with the job. Each entry is forward-geocoded server-side; a country mismatch returns `400 jobs_unresolvable_location`."
+            "description": "Physical office locations associated with the job. Prefer `{query: \"City, Country\"}` for free-form input; `{city, country, region?, locality?}` is also accepted when you already have structured fields. Each entry is resolved server-side; a country mismatch returns `400 jobs_unresolvable_location`."
           },
           "externalId": {
             "type": "string",
@@ -17043,9 +17564,6 @@
                 },
                 {
                   "type": "number"
-                },
-                {
-                  "nullable": true
                 },
                 {
                   "nullable": true
@@ -17626,9 +18144,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Job expiry as a Unix epoch in milliseconds. On create, omitted or `null` defaults to 30 days from creation. On PATCH, pass `null` to clear an existing expiry. Past timestamps remove the job from the public board."
@@ -17677,7 +18192,7 @@
             "items": {
               "$ref": "#/components/schemas/JobOfficeLocationInput"
             },
-            "description": "Physical office locations associated with the job. Each entry is forward-geocoded server-side; a country mismatch returns `400 jobs_unresolvable_location`."
+            "description": "Physical office locations associated with the job. Prefer `{query: \"City, Country\"}` for free-form input; `{city, country, region?, locality?}` is also accepted when you already have structured fields. Each entry is resolved server-side; a country mismatch returns `400 jobs_unresolvable_location`."
           },
           "externalId": {
             "type": "string",
@@ -17704,9 +18219,6 @@
                 },
                 {
                   "type": "number"
-                },
-                {
-                  "nullable": true
                 },
                 {
                   "nullable": true
@@ -19104,6 +19616,14 @@
             "type": "boolean",
             "description": "Whether candidates can subscribe to email alerts for new jobs."
           },
+          "jobRecommendationsEnabled": {
+            "type": "boolean",
+            "description": "Whether signed-in candidates can see personalized job recommendations. Absent board config defaults to `true`."
+          },
+          "recommendedTalentEnabled": {
+            "type": "boolean",
+            "description": "Whether employers can see recommended talent matches for their jobs. Absent board config defaults to `false`."
+          },
           "candidatesEnabled": {
             "type": "boolean",
             "description": "Whether candidate profiles are enabled on the board."
@@ -19153,6 +19673,11 @@
             "type": "string",
             "enum": ["off", "public", "employers_only"],
             "description": "Talent directory access mode: `off` (hidden), `public` (anyone), or `employers_only` (approved employers). Canonical field; supersedes `talentDirectoryEnabled`."
+          },
+          "defaultCandidateProfileVisibility": {
+            "type": "string",
+            "enum": ["hidden", "logged_in_only", "public"],
+            "description": "Visibility a candidate profile is created with at signup: `hidden` (not listed), `logged_in_only` (signed-in visitors), or `public`. Defaults to `hidden`, which matches what an unset value already means — the talent directory lists only `public` and `logged_in_only` profiles. Applies at signup ONLY: it never rewrites an existing profile, and a candidate can change their own afterwards. Composes with `talentDirectoryVisibility`, which controls who may browse the directory at all."
           },
           "requireCookieConsent": {
             "type": "boolean",
@@ -19211,9 +19736,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Public contact email shown on the board. Pass `null` to clear."
@@ -19227,9 +19749,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -19249,9 +19768,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Postal address of the entity operating the board. Pass `null` to clear."
@@ -19265,9 +19781,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -19287,9 +19800,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Company X (Twitter) handle or profile URL. Pass `null` to clear."
@@ -19306,9 +19816,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Company Facebook page URL. Pass `null` to clear."
@@ -19322,9 +19829,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -19347,9 +19851,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -19380,9 +19881,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "AdSense publisher ID in `ca-pub-XXXXXXXXXXXXXXXX` format. Pass an empty string or `null` to clear."
@@ -19403,9 +19901,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -19620,59 +20115,7 @@
               "alerts": {
                 "type": "array",
                 "items": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/Alert"
-                    },
-                    {
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Unique identifier for the alert."
-                        },
-                        "object": {
-                          "type": "string",
-                          "enum": ["alert"],
-                          "description": "String representing the object's type."
-                        },
-                        "subscriberId": {
-                          "type": "string",
-                          "description": "Identifier of the subscriber that owns this alert."
-                        },
-                        "filters": {
-                          "nullable": true,
-                          "description": "The job-filter criteria the alert matches against."
-                        },
-                        "frequency": {
-                          "type": "string",
-                          "enum": ["weekly"],
-                          "description": "Weekly delivery cadence."
-                        },
-                        "isActive": {
-                          "type": "boolean",
-                          "description": "Whether the alert is currently active."
-                        },
-                        "lastSentAt": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "ISO-8601 timestamp of the last dispatch, or `null`."
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "description": "ISO-8601 timestamp of when the alert was created."
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "object",
-                        "subscriberId",
-                        "frequency",
-                        "isActive",
-                        "lastSentAt",
-                        "createdAt"
-                      ]
-                    }
-                  ]
+                  "$ref": "#/components/schemas/SubscriberAlert"
                 },
                 "description": "The subscriber's alerts."
               }
@@ -19681,93 +20124,53 @@
           }
         ]
       },
-      "Alert": {
+      "SubscriberAlert": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "Job-alert preference ID. Also the path key."
+            "description": "Unique identifier for the alert."
           },
           "object": {
             "type": "string",
-            "enum": ["alert"]
+            "enum": ["alert"],
+            "description": "String representing the object's type."
           },
-          "label": {
+          "subscriberId": {
             "type": "string",
-            "nullable": true
+            "description": "Identifier of the subscriber that owns this alert."
+          },
+          "filters": {
+            "nullable": true,
+            "description": "The job-filter criteria the alert matches against."
           },
           "frequency": {
             "type": "string",
-            "enum": ["weekly"]
+            "enum": ["weekly"],
+            "description": "Weekly delivery cadence."
           },
           "isActive": {
-            "type": "boolean"
-          },
-          "filters": {
-            "type": "object",
-            "properties": {
-              "jobFunctions": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "seniorityLevels": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "remoteOptions": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "placeIds": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "salaryMin": {
-                "type": "number",
-                "nullable": true
-              },
-              "salaryMax": {
-                "type": "number",
-                "nullable": true
-              },
-              "salaryCurrency": {
-                "type": "string",
-                "nullable": true
-              }
-            },
-            "required": [
-              "jobFunctions",
-              "seniorityLevels",
-              "remoteOptions",
-              "placeIds",
-              "salaryMin",
-              "salaryMax",
-              "salaryCurrency"
-            ]
+            "type": "boolean",
+            "description": "Whether the alert is currently active."
           },
           "lastSentAt": {
             "type": "string",
             "nullable": true,
-            "format": "date-time",
-            "description": "When this alert last dispatched a digest, or null."
+            "description": "ISO-8601 timestamp of the last dispatch, or `null`."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO-8601 timestamp of when the alert was created."
           }
         },
         "required": [
           "id",
           "object",
-          "label",
+          "subscriberId",
           "frequency",
           "isActive",
-          "filters",
-          "lastSentAt"
+          "lastSentAt",
+          "createdAt"
         ]
       },
       "Category": {
@@ -19875,9 +20278,6 @@
               {
                 "type": "string",
                 "minLength": 1
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -20491,6 +20891,7 @@
                 "candidate.created",
                 "candidate.updated",
                 "candidate.deleted",
+                "candidate.profile.updated",
                 "marketing_permission.granted",
                 "marketing_permission.withdrawn"
               ]
@@ -20541,6 +20942,7 @@
                 "candidate.created",
                 "candidate.updated",
                 "candidate.deleted",
+                "candidate.profile.updated",
                 "marketing_permission.granted",
                 "marketing_permission.withdrawn"
               ]
@@ -20995,7 +21397,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLEJOBCREATED",
           "object": "event",
@@ -21180,7 +21581,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLEJOBUPDATED",
           "object": "event",
@@ -21305,7 +21705,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLEJOBDELETED",
           "object": "event",
@@ -21545,7 +21944,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECOMPANYCREATED",
           "object": "event",
@@ -21673,7 +22071,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECOMPANYUPDATED",
           "object": "event",
@@ -21785,7 +22182,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECOMPANYDELETED",
           "object": "event",
@@ -22015,7 +22411,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECANDIDATECREATED",
           "object": "event",
@@ -22138,7 +22533,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECANDIDATEUPDATED",
           "object": "event",
@@ -22249,7 +22643,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLECANDIDATEDELETED",
           "object": "event",
@@ -22267,6 +22660,140 @@
               "email": "candidate@example.test"
             },
             "changed_fields": []
+          }
+        }
+      },
+      "WebhookCandidateProfilePointer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["candidate.profile"]
+          },
+          "profile_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": ["id", "object", "profile_revision"],
+        "description": "Thin pointer for candidate.profile.updated. No profile values; pull GET /v1/candidates/{id}/profile and reject a stale profile_revision.",
+        "example": {
+          "id": "boardUsers_01EXAMPLE",
+          "object": "candidate.profile",
+          "profile_revision": 1
+        }
+      },
+      "WebhookCandidateProfileChangedField": {
+        "type": "string",
+        "enum": [
+          "profile.headline",
+          "profile.bio",
+          "profile.location",
+          "profile.country_code",
+          "skills",
+          "languages",
+          "experience",
+          "education"
+        ],
+        "example": "profile.headline"
+      },
+      "WebhookCandidateProfileUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable public event id (evt_…)."
+          },
+          "object": {
+            "type": "string",
+            "enum": ["event"]
+          },
+          "type": {
+            "type": "string",
+            "enum": ["candidate.profile.updated"]
+          },
+          "schema_version": {
+            "type": "string",
+            "enum": ["1"]
+          },
+          "occurred_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp with second precision (…Z)."
+          },
+          "board_id": {
+            "type": "string",
+            "description": "Board account id that owns the event."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string",
+                    "enum": ["candidate.profile"]
+                  },
+                  "profile_revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": ["id", "object", "profile_revision"],
+                "description": "Thin pointer for candidate.profile.updated. No profile values; pull GET /v1/candidates/{id}/profile and reject a stale profile_revision."
+              },
+              "changed_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "profile.headline",
+                    "profile.bio",
+                    "profile.location",
+                    "profile.country_code",
+                    "skills",
+                    "languages",
+                    "experience",
+                    "education"
+                  ]
+                },
+                "description": "Closed Candidate profile changed_fields vocabulary for candidate.profile.updated."
+              }
+            },
+            "required": ["object", "changed_fields"]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "type",
+          "schema_version",
+          "occurred_at",
+          "board_id",
+          "data"
+        ],
+        "example": {
+          "id": "evt_01EXAMPLECANDIDATEPROFILE",
+          "object": "event",
+          "type": "candidate.profile.updated",
+          "schema_version": "1",
+          "occurred_at": "2026-08-03T13:30:00Z",
+          "board_id": "acc_01EXAMPLEBOARD",
+          "data": {
+            "object": {
+              "id": "boardUsers_01EXAMPLE",
+              "object": "candidate.profile",
+              "profile_revision": 1
+            },
+            "changed_fields": ["profile.headline", "skills"]
           }
         }
       },
@@ -22487,7 +23014,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLEMARKETINGGRANT",
           "object": "event",
@@ -22643,7 +23169,6 @@
           "board_id",
           "data"
         ],
-        "description": "Common outbound webhook event envelope.",
         "example": {
           "id": "evt_01EXAMPLEMARKETINGWITHDRAWAL",
           "object": "event",
@@ -22981,32 +23506,10 @@
         "required": ["code", "message"],
         "description": "Error envelope, populated once the operation reaches `failed`. `null` otherwise."
       },
-      "CandidateProfile": {
+      "AdminCandidateProfile": {
         "type": "object",
+        "nullable": true,
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "object": {
-            "type": "string",
-            "enum": ["candidate_profile"]
-          },
-          "displayName": {
-            "type": "string",
-            "nullable": true
-          },
-          "bio": {
-            "type": "string",
-            "nullable": true
-          },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "handle": {
-            "type": "string",
-            "nullable": true
-          },
           "headline": {
             "type": "string",
             "nullable": true
@@ -23015,41 +23518,60 @@
             "type": "string",
             "nullable": true
           },
-          "countryCode": {
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "jobSearchStatus": {
             "type": "string",
             "nullable": true
           },
           "profileVisibility": {
             "type": "string",
-            "enum": ["hidden", "logged_in_only", "public"]
-          },
-          "jobSearchStatus": {
-            "type": "string",
-            "enum": ["actively_looking", "open_to_offers", "not_looking"]
-          },
-          "jobSearchStatusVisibleTo": {
-            "type": "string",
-            "enum": ["everyone", "employers_only"]
+            "nullable": true
           },
           "openToRelocate": {
-            "type": "boolean"
+            "type": "boolean",
+            "nullable": true
+          },
+          "seniority": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workingPermits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interestedRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "id",
-          "object",
-          "displayName",
-          "bio",
-          "avatarUrl",
-          "handle",
           "headline",
           "location",
-          "countryCode",
-          "profileVisibility",
+          "bio",
           "jobSearchStatus",
-          "jobSearchStatusVisibleTo",
-          "openToRelocate"
-        ]
+          "profileVisibility",
+          "openToRelocate",
+          "seniority",
+          "skills",
+          "workingPermits",
+          "interestedRoles"
+        ],
+        "description": "Admin-visible profile detail, or `null` when no profile exists."
       },
       "CandidateResumeFile": {
         "type": "object",
@@ -23070,6 +23592,289 @@
         },
         "required": ["downloadUrl", "contentType", "sizeBytes"],
         "description": "Protected download path and metadata for the uploaded resume, or `null` when no resume is on file (or the storage blob is missing)."
+      },
+      "CandidateSyncSnapshotLanguage": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "proficiency": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": ["name", "proficiency", "sortOrder"]
+      },
+      "CandidateSyncSnapshotExperience": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "companyUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "employmentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationType": {
+            "type": "string",
+            "nullable": true
+          },
+          "foundVia": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "experienceSkills": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "companyName",
+          "companyUrl",
+          "location",
+          "employmentType",
+          "locationType",
+          "foundVia",
+          "startDate",
+          "endDate",
+          "description",
+          "experienceSkills",
+          "sortOrder"
+        ]
+      },
+      "CandidateSyncSnapshotEducation": {
+        "type": "object",
+        "properties": {
+          "institutionName": {
+            "type": "string"
+          },
+          "institutionUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldOfStudy": {
+            "type": "string",
+            "nullable": true
+          },
+          "grade": {
+            "type": "string",
+            "nullable": true
+          },
+          "activitiesAndSocieties": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "institutionName",
+          "institutionUrl",
+          "degree",
+          "fieldOfStudy",
+          "grade",
+          "activitiesAndSocieties",
+          "startDate",
+          "endDate",
+          "description",
+          "sortOrder"
+        ]
+      },
+      "CandidateProfileLanguageProjection": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Language name."
+          },
+          "proficiency": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Proficiency label."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["name", "proficiency", "sortOrder"],
+        "additionalProperties": false
+      },
+      "CandidateProfileExperienceProjection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Job title."
+          },
+          "companyName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Employer name."
+          },
+          "companyUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Employer URL."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Role location."
+          },
+          "employmentType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Employment type."
+          },
+          "locationType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Location type."
+          },
+          "foundVia": {
+            "type": "string",
+            "nullable": true,
+            "description": "How the role was found."
+          },
+          "startDate": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Start date."
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "End date."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Role description."
+          },
+          "experienceSkills": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "description": "Per-role skills; replaced with the row."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["title", "companyName", "startDate", "sortOrder"],
+        "additionalProperties": false
+      },
+      "CandidateProfileEducationProjection": {
+        "type": "object",
+        "properties": {
+          "institutionName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Institution name."
+          },
+          "institutionUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Institution URL."
+          },
+          "degree": {
+            "type": "string",
+            "nullable": true,
+            "description": "Degree awarded."
+          },
+          "fieldOfStudy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Field of study."
+          },
+          "grade": {
+            "type": "string",
+            "nullable": true,
+            "description": "Grade or GPA."
+          },
+          "activitiesAndSocieties": {
+            "type": "string",
+            "nullable": true,
+            "description": "Activities and societies."
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Start date."
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "End date."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Education description."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Display order, lower first."
+          }
+        },
+        "required": ["institutionName", "sortOrder"],
+        "additionalProperties": false
       },
       "ResourceLinks": {
         "type": "object",
@@ -23104,63 +23909,35 @@
         },
         "required": ["method", "name", "expectedValue"]
       },
-      "EmployerCompany": {
+      "EmployerApprovedCompany": {
         "type": "object",
         "properties": {
-          "id": {
+          "companyId": {
             "type": "string"
           },
-          "object": {
-            "type": "string",
-            "enum": ["employer_company"]
-          },
-          "name": {
+          "companyName": {
             "type": "string"
           },
-          "slug": {
-            "type": "string"
-          },
-          "website": {
+          "status": {
             "type": "string",
-            "nullable": true
+            "description": "Membership status (e.g. `approved`)."
           },
-          "description": {
+          "approvalSource": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "How the membership was approved (`domain_match` | `work_email_verification` | `admin` | `owner_creation`), or `null`."
           },
-          "summary": {
+          "joinedAt": {
             "type": "string",
-            "nullable": true
-          },
-          "xUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "linkedinUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "facebookUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "logoUrl": {
-            "type": "string",
-            "nullable": true
+            "description": "ISO-8601 timestamp the membership was created."
           }
         },
         "required": [
-          "id",
-          "object",
-          "name",
-          "slug",
-          "website",
-          "description",
-          "summary",
-          "xUrl",
-          "linkedinUrl",
-          "facebookUrl",
-          "logoUrl"
+          "companyId",
+          "companyName",
+          "status",
+          "approvalSource",
+          "joinedAt"
         ]
       },
       "EmployerPendingClaim": {
@@ -23229,6 +24006,19 @@
           {
             "type": "object",
             "properties": {
+              "query": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "Free-form location string (e.g. `\"Berlin, Germany\"`, `\"Utrecht, Netherlands\"`, `\"Mountain View, California, USA\"`). Resolved server-side; rejected when no high-confidence match is found."
+              }
+            },
+            "required": ["query"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
               "locality": {
                 "type": "string",
                 "minLength": 1,
@@ -23251,19 +24041,6 @@
               }
             },
             "required": ["city", "country"],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "query": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 500,
-                "description": "Free-form location string (e.g. `\"Berlin, Germany\"`, `\"Mountain View, California, USA\"`). Mapbox parses + ranks candidates server-side; rejects on low confidence."
-              }
-            },
-            "required": ["query"],
             "additionalProperties": false
           }
         ]
@@ -23487,6 +24264,12 @@
           "jobAlertsEnabled": {
             "type": "boolean"
           },
+          "jobRecommendationsEnabled": {
+            "type": "boolean"
+          },
+          "recommendedTalentEnabled": {
+            "type": "boolean"
+          },
           "candidatesEnabled": {
             "type": "boolean"
           },
@@ -23583,8 +24366,13 @@
           "talentDirectoryVisibility": {
             "type": "string",
             "enum": ["off", "public", "employers_only"]
+          },
+          "defaultCandidateProfileVisibility": {
+            "type": "string",
+            "enum": ["hidden", "logged_in_only", "public"]
           }
         },
+        "required": ["jobRecommendationsEnabled", "recommendedTalentEnabled"],
         "additionalProperties": false
       },
       "SettingsAdsenseSlot": {
@@ -23606,9 +24394,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Ten-digit AdSense slot ID. Pass an empty string or `null` to clear."
@@ -23622,9 +24407,6 @@
               {
                 "type": "string",
                 "enum": [""]
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
@@ -23650,9 +24432,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "AdSense ad format."
@@ -23669,9 +24448,6 @@
               },
               {
                 "nullable": true
-              },
-              {
-                "nullable": true
               }
             ],
             "description": "Visual style override for the placement."
@@ -23682,9 +24458,6 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 50
-              },
-              {
-                "nullable": true
               },
               {
                 "nullable": true
