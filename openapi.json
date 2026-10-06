@@ -8309,7 +8309,7 @@
       },
       "post": {
         "summary": "Create a job",
-        "description": "Creates a new job in `draft` status. The request is idempotent when an `Idempotency-Key` header is supplied. Reposts of existing jobs return 409 `jobs_already_exists` with the matching job ID. `remoteOption` is required, and a `salaryMin` or `salaryMax` requires both `salaryCurrency` and `salaryTimeframe`; a missing one returns `400 validation_bad_request` naming the field.",
+        "description": "Creates a new job in `draft` status. The request is idempotent when an `Idempotency-Key` header is supplied. Reposts of existing jobs return 409 `jobs_already_exists` with the matching job ID. Always set `externalId` (the source job URL or ATS requisition ID) so reposts are detected reliably. When the 409 has `details.matched_on: \"application_url\"`, another job on your account uses the same `applicationUrl`; `details.matching_jobs` lists up to 5 of them. If the new job is a different role that shares that application destination (one ATS page or one inbox), retry with `allowSharedApplicationUrl: true`. The retry is a different request body, so send a new `Idempotency-Key` if you used one. `remoteOption` is required, and a `salaryMin` or `salaryMax` requires both `salaryCurrency` and `salaryTimeframe`; a missing one returns `400 validation_bad_request` naming the field.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8352,7 +8352,7 @@
             }
           },
           "409": {
-            "description": "A job with the same `applicationUrl`, `externalId`, or content already exists on your account. The matching job ID is returned in `details.existing_job_id`.",
+            "description": "A job with the same `applicationUrl`, `externalId`, or content already exists on your account. The matching job ID is returned in `details.existing_job_id` and the check that matched in `details.matched_on` (`application_url`, `external_id`, or `composite_hash`). For `application_url`, `details.matching_jobs` lists up to 5 jobs that use the same application URL or email, each as `{ id, title, status }`; if this is a different role that shares that destination, retry with `allowSharedApplicationUrl: true` (and a new `Idempotency-Key` if you used one). A matching `externalId` or an identical job cannot be overridden.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19946,7 +19946,23 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role, or `null` if not specified."
+            "description": "Employment type of the role, or `null` if not specified. For a job with a custom employment type, this is the Google equivalent of the custom type."
+          },
+          "customEmploymentType": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Stable key of the custom employment type. Never changes."
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name of the custom employment type, as configured."
+              }
+            },
+            "required": ["key", "label"],
+            "description": "The board's custom employment type for this job (for example `Casual`), or `null` when the job uses a built-in type only. A deleted custom type reads back as `null` and the job shows its built-in `employmentType`."
           },
           "remoteOption": {
             "type": "string",
@@ -20088,6 +20104,7 @@
           "status",
           "companyId",
           "employmentType",
+          "customEmploymentType",
           "remoteOption",
           "seniority",
           "salaryMin",
@@ -20137,7 +20154,14 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role."
+            "description": "Employment type of the role. When `customEmploymentType` is also sent, this must be the Google equivalent of that custom type (or be omitted: the server sets it). Sending a built-in type without `customEmploymentType` clears any custom type on the job."
+          },
+          "customEmploymentType": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Key of one of the board's custom employment types (`GET /v1/settings/job-form` → `employmentType.customTypes`). The job is saved with the Google equivalent of that type as its built-in `employmentType`, which is what Google for Jobs and feeds see. An unknown key, a type the board no longer offers (`offered: false`), or an `employmentType` that differs from its Google equivalent returns `400 jobs_constraint_violation`. Pass `null` to clear the custom type and keep the built-in; omitted means unchanged."
           },
           "remoteOption": {
             "type": "string",
@@ -20343,7 +20367,7 @@
             "nullable": true,
             "minLength": 1,
             "maxLength": 255,
-            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Use this value to look up the job later via `GET /v1/jobs?externalId=...` for deduplication. Scoped per-account: two different accounts may reuse the same `externalId` without collision. Up to 255 characters. `null` means not set."
+            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Use this value to look up the job later via `GET /v1/jobs?externalId=...` for deduplication. Always set it on create (the source job URL or ATS requisition ID) so reposts of the same job are detected reliably, even when several jobs share one `applicationUrl`. Scoped per-account: two different accounts may reuse the same `externalId` without collision. Up to 255 characters. `null` means not set."
           },
           "customFieldValues": {
             "type": "object",
@@ -20410,6 +20434,10 @@
             "type": "string",
             "enum": ["draft", "published"],
             "description": "Initial status of the job. Defaults to `draft`. Only `draft` and `published` are writable here. The system-set values `expired`, `archived`, and `pending_approval` are not. Use the dedicated transitions (`POST /v1/jobs/:id/publish`, `/pause`, `/expire`) for status changes after create."
+          },
+          "allowSharedApplicationUrl": {
+            "type": "boolean",
+            "description": "Set to `true` to create this job even though another job on your account already uses the same `applicationUrl` (for example, several roles that share one ATS page or one application inbox). Only skips the application-URL duplicate check; a matching `externalId` or an identical job (same company, title, location and description) still returns 409 `jobs_already_exists`. Defaults to `false`."
           }
         },
         "required": ["description", "remoteOption", "applicationUrl", "title"],
@@ -20731,7 +20759,17 @@
                   ]
                 },
                 "maxItems": 10,
-                "description": "Only return jobs with any of the given employment types. Up to 10 values."
+                "description": "Only return jobs with any of the given built-in employment types. Up to 10 values. A built-in value matches jobs of that type that have no custom employment type: a job with a custom type matches only through `customEmploymentType`. Combined with `customEmploymentType` as a union."
+              },
+              "customEmploymentType": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "maxItems": 10,
+                "description": "Only return jobs with any of the given custom employment type keys (the board's `customTypes`). Up to 10 values. Combined with `employmentType` as a union: a job matches when it has one of these custom types OR one of the given built-in types and no custom type."
               },
               "seniority": {
                 "type": "array",
@@ -20867,7 +20905,14 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role."
+            "description": "Employment type of the role. When `customEmploymentType` is also sent, this must be the Google equivalent of that custom type (or be omitted: the server sets it). Sending a built-in type without `customEmploymentType` clears any custom type on the job."
+          },
+          "customEmploymentType": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Key of one of the board's custom employment types (`GET /v1/settings/job-form` → `employmentType.customTypes`). The job is saved with the Google equivalent of that type as its built-in `employmentType`, which is what Google for Jobs and feeds see. An unknown key, a type the board no longer offers (`offered: false`), or an `employmentType` that differs from its Google equivalent returns `400 jobs_constraint_violation`. Pass `null` to clear the custom type and keep the built-in; omitted means unchanged."
           },
           "remoteOption": {
             "type": "string",
@@ -23065,7 +23110,22 @@
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Built-in employment types offered. Empty means every built-in, unless the board has custom types: then it means no built-in is offered, only the offered custom types."
+              },
+              "customTypes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JobFormCustomEmploymentType"
+                },
+                "description": "The board's custom employment types (at most 20)."
+              },
+              "order": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Display order of built-in values and custom type keys. Absent: built-ins in their standard order, then custom types. Entries it misses follow in that same order."
               }
             },
             "required": ["allowedOptions"]
@@ -29347,6 +29407,28 @@
             "collection": "#/components/schemas/FormLayoutCollectionFieldRef"
           }
         }
+      },
+      "JobFormCustomEmploymentType": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable key, derived from the name at creation. Send it as `customEmploymentType` on `POST`/`PATCH /v1/jobs`."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name, e.g. `Casual`."
+          },
+          "employmentType": {
+            "type": "string",
+            "description": "The custom type's Google equivalent: a built-in employment type (Google for Jobs and feeds see this value)."
+          },
+          "offered": {
+            "type": "boolean",
+            "description": "`false` when posters can no longer pick this type (jobs that use it keep its label). Absent means offered."
+          }
+        },
+        "required": ["key", "label", "employmentType"]
       },
       "CustomFieldDefinition": {
         "type": "object",
