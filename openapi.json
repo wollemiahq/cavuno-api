@@ -3,7 +3,7 @@
   "info": {
     "title": "Cavuno v1 REST API",
     "version": "1.0.0",
-    "description": "The Cavuno API is organized around REST. Our API has predictable resource-oriented URLs, accepts JSON-encoded request bodies, returns JSON-encoded responses, and uses standard HTTP response codes, authentication, and verbs.\n\n## Base URL\n\nProduction: `https://api.cavuno.com/v1`\n\nAll API requests must be made over HTTPS. Calls made over plain HTTP will fail.\n\n## Authentication\n\nThe Cavuno API uses API keys to authenticate requests. You can view and manage your API keys in the Cavuno dashboard, under Settings → Developer → API keys.\n\nCavuno API keys have the prefix `cavuno_live_`. Your API keys carry many privileges, so be sure to keep them secure. Do not share your secret API keys in publicly accessible areas such as GitHub, client-side code, and so forth.\n\nAuthentication to the API is performed via Bearer auth. Provide your API key as the bearer token in the `Authorization` header:\n\n```bash\ncurl https://api.cavuno.com/v1/jobs \\\n  -H \"Authorization: Bearer YOUR_SECRET_API_KEY\"\n```\n\nAPI requests without authentication will fail.\n\n## Rate limits\n\nThe Cavuno API has rate limits in place to ensure stability and reliability. By default, API keys are limited to 100 requests per minute. If you exceed your limit, requests return an HTTP 429 response with a `Retry-After` header indicating when you can try again.\n\nIf you have a use case that needs a higher limit, contact support.\n\n## Idempotency\n\nThe API supports idempotency for safely retrying requests without accidentally performing the same operation twice. For example, if a request to create a job fails due to a network connection error, you can safely retry the request with the same idempotency key, and we'll guarantee that only one job is created.\n\nTo perform an idempotent request, provide an additional `Idempotency-Key` header on any `POST`, `PATCH`, or `DELETE` request:\n\n```bash\ncurl https://api.cavuno.com/v1/jobs \\\n  -X POST \\\n  -H \"Authorization: Bearer cavuno_live_...\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"title\": \"Senior Engineer\" }'\n```\n\n## Errors\n\nCavuno uses conventional HTTP response codes to indicate the success or failure of an API request. In general: codes in the `2xx` range indicate success, codes in the `4xx` range indicate an error that failed given the information provided (e.g., a required parameter was omitted), and codes in the `5xx` range indicate an error with Cavuno's servers (these are rare).\n\nError responses include a JSON body with details:\n\n```json\n{\n  \"error\": {\n    \"code\": \"validation_bad_request\",\n    \"message\": \"Field 'title' is required.\",\n    \"requestId\": \"req_...\"\n  }\n}\n```\n\nSome errors carry an additional `details` field with structured context, such as per-field validation issues.\n\nWhen contacting support about a failed request, include the `requestId` value. It is the fastest way for us to find your request in our logs.\n",
+    "description": "The Cavuno API is organized around REST. Our API has predictable resource-oriented URLs, accepts JSON-encoded request bodies, returns JSON-encoded responses, and uses standard HTTP response codes, authentication, and verbs.\n\n## Base URL\n\nProduction: `https://api.cavuno.com/v1`\n\nAll API requests must be made over HTTPS. Calls made over plain HTTP will fail.\n\n## Authentication\n\nThe Cavuno API uses API keys to authenticate requests. You can view and manage your API keys in the Cavuno dashboard, under Settings → Developer → API keys.\n\nCavuno API keys have the prefix `cavuno_live_`. Your API keys carry many privileges, so be sure to keep them secure. Do not share your secret API keys in publicly accessible areas such as GitHub, client-side code, and so forth.\n\nAuthentication to the API is performed via Bearer auth. Provide your API key as the bearer token in the `Authorization` header:\n\n```bash\ncurl https://api.cavuno.com/v1/jobs \\\n  -H \"Authorization: Bearer YOUR_SECRET_API_KEY\"\n```\n\nAPI requests without authentication will fail.\n\n## Rate limits\n\nThe Cavuno API has rate limits in place to ensure stability and reliability. By default, API keys are limited to 100 requests per minute. If you exceed your limit, requests return an HTTP 429 response with a `Retry-After` header indicating when you can try again.\n\nIf you have a use case that needs a higher limit, contact support.\n\n## Idempotency\n\nThe API supports idempotency for safely retrying requests without accidentally performing the same operation twice. For example, if a request to create a job fails due to a network connection error, you can safely retry the request with the same idempotency key, and we'll guarantee that only one job is created.\n\nTo perform an idempotent request, provide an additional `Idempotency-Key` header on any `POST`, `PATCH`, or `DELETE` request:\n\n```bash\ncurl https://api.cavuno.com/v1/jobs \\\n  -X POST \\\n  -H \"Authorization: Bearer cavuno_live_...\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"title\": \"Senior Engineer\" }'\n```\n\n## Errors\n\nCavuno uses conventional HTTP response codes to indicate the success or failure of an API request. In general: codes in the `2xx` range indicate success, codes in the `4xx` range indicate an error that failed given the information provided (e.g., a required parameter was omitted), and codes in the `5xx` range indicate an error with Cavuno's servers (these are rare).\n\nError responses include a JSON body with details:\n\n```json\n{\n  \"error\": {\n    \"code\": \"validation_bad_request\",\n    \"message\": \"Field 'title' is required.\",\n    \"requestId\": \"req_...\"\n  }\n}\n```\n\nSome errors carry an additional `details` field with structured context, such as per-field validation issues.\n\n### Plan upgrade hints\n\nWhen an Operator API request is refused because of the board's Cavuno plan, the error also carries an `upgrade` object. It names the capability that blocked the request, the cheapest self-serve plan that unlocks it (when that can be told), and the hosted billing endpoints that start the upgrade:\n\n```json\n{\n  \"error\": {\n    \"code\": \"settings_plan_required_for_branding_removal\",\n    \"message\": \"Removing Cavuno branding requires a plan that includes branding removal.\",\n    \"requestId\": \"req_...\",\n    \"upgrade\": {\n      \"capability\": \"canRemoveBranding\",\n      \"requiredPlan\": \"basic\",\n      \"checkout\": { \"method\": \"POST\", \"path\": \"/v1/billing/checkout\" },\n      \"changePlan\": { \"method\": \"POST\", \"path\": \"/v1/billing/upgrade\" }\n    }\n  }\n}\n```\n\nCall `GET /v1/billing/subscription` first. With no active subscription, use `checkout`; with one, use `changePlan`. Send `{ \"planKey\": \"<requiredPlan>\" }` and give the returned `url` to a person: both endpoints return a hosted page where a person confirms the purchase. Nothing is charged until they do. Each `path` is relative to the API origin (`https://api.cavuno.com`), like `Location` headers and list `url` fields, so do not join it to a base URL that already ends in `/v1`. Both endpoints need a key with `billing.manage`; a key without it should hand the person the dashboard's billing page instead. Board API errors never carry this field.\n\nWhen contacting support about a failed request, include the `requestId` value. It is the fastest way for us to find your request in our logs.\n\n## Reporting problems\n\nAI agents can report anything that got in the way of a task: a missing capability, unclear documentation, a surprising response, an unhelpful error, a bug or slow performance. `POST /v1/feedback` accepts [Agent Feedback Protocol v0.1](https://trybackloop.com/spec/) reports, with or without an API key, and API error responses link to it in a `Link: <https://api.cavuno.com/v1/feedback>; rel=\"agent-feedback\"` header. The discovery document is at `https://api.cavuno.com/.well-known/agent-feedback`.\n\n```bash\ncurl https://api.cavuno.com/v1/feedback \\\n  -X POST \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"type\": \"missing_capability\", \"goal\": \"What you were trying to do\", \"message\": \"What got in the way\", \"agent\": { \"name\": \"my-agent\", \"model\": \"model-name\" } }'\n```\n\n`type`, `goal` and `message` are required. Each account or visitor can send 20 reports every 5 minutes. Never include credentials or personal data. Send the report, then continue with your task.\n",
     "contact": {
       "name": "Cavuno",
       "url": "https://cavuno.com"
@@ -592,7 +592,7 @@
     "/analytics/traffic": {
       "get": {
         "summary": "Get analytics traffic tables",
-        "description": "Typed Board homepage traffic breakdowns: top pages, sources, locations, devices, and first-touch UTM campaigns with apply-click attribution. Sources are normalized referrers (never full URLs). Campaigns are tagged inbound sessions only (utm_campaign / utm_source / utm_medium parsed from the first-touch href). Inclusive UTC date-only range; defaults to the last 30 completed UTC days ending yesterday. Max range 366 days. `limit` caps each table (1–10, default 10).",
+        "description": "Typed Board homepage traffic breakdowns: top pages, sources, locations, devices, and first-touch UTM campaigns with apply-click attribution. Sources are normalized referrers (never full URLs). Campaigns are tagged inbound sessions only (utm_campaign / utm_source / utm_medium parsed from the first-touch href), one row per triple; `campaignGroupBy=content` also splits them by utm_content / utm_term. Inclusive UTC date-only range; defaults to the last 30 completed UTC days ending yesterday. Max range 366 days. `limit` caps each table (1–10, default 10).",
         "parameters": [
           {
             "schema": {
@@ -626,6 +626,17 @@
             "required": false,
             "description": "Max rows per traffic table (1–10). Defaults to 10.",
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["campaign", "content"],
+              "description": "Grouping for the `campaigns` table. `campaign` (default) groups by utm_campaign, utm_source and utm_medium. `content` also groups by utm_content and utm_term, for per-post attribution, and adds `content` and `term` to each row. Visits and apply clicks are matched on the same values."
+            },
+            "required": false,
+            "description": "Grouping for the `campaigns` table. `campaign` (default) groups by utm_campaign, utm_source and utm_medium. `content` also groups by utm_content and utm_term, for per-post attribution, and adds `content` and `term` to each row. Visits and apply clicks are matched on the same values.",
+            "name": "campaignGroupBy",
             "in": "query"
           }
         ],
@@ -1346,6 +1357,37 @@
         "x-audience": "operator",
         "tags": ["Billing"],
         "operationId": "getBillingConnect"
+      }
+    },
+    "/billing/connect/onboarding-link": {
+      "post": {
+        "summary": "Create a Stripe Connect onboarding link",
+        "description": "Returns a hosted Stripe onboarding URL for the Board's payment connection, creating the connected account first if the Board has none. The URL is single-use and expires within minutes: hand it to a human immediately, then poll `GET /v1/billing/connect` until `acceptingPayments` and `payoutsEnabled` are both true. Calling this again issues a fresh link, so request a new one if the human did not finish in time. When the human finishes or the link expires, Stripe sends them to the Board's payment settings in the dashboard. Sandbox boards use a platform-provisioned test connection and are refused with `sandbox_connect_managed` (409). Requires `plans.manage`.",
+        "responses": {
+          "200": {
+            "description": "Onboarding link created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingConnectOnboardingLink"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Billing"],
+        "operationId": "createBillingConnectOnboardingLink"
       }
     },
     "/billing/subscription": {
@@ -4244,7 +4286,7 @@
       },
       "delete": {
         "summary": "Delete a company",
-        "description": "Permanently deletes a company and cascades to delete every job attached to it (along with each job’s child records). It cannot be undone. Deleting a company that is on the blocklist never takes it off the blocklist: the company stays blocked and is removed from the board instead of being purged, so automated sourcing cannot recreate it. To purge a blocked company completely, unblock it first and then delete it.",
+        "description": "Permanently deletes a company and cascades to delete every job attached to it (along with each job’s child records). It cannot be undone. Pass `block=true` to delete and block: the company is removed from the board and stays on the blocklist, so automated sourcing cannot recreate it. Deleting a company that is on the blocklist never takes it off the blocklist: the company stays blocked and is removed from the board instead of being purged. To purge a blocked company completely, unblock it first and then delete it.",
         "parameters": [
           {
             "schema": {
@@ -4257,6 +4299,17 @@
             "example": "p17xq4c2b9r5gz3e8j0r6t4k7m2n9d5w",
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "description": "Pass `true` to delete and block: the company is removed from the board and kept on the blocklist, so backfill, imports and the API cannot add it back until it is unblocked. Defaults to `false`, a plain delete after which backfill may add the company again if it still matches the board’s sources. Ignored for a company whose website domain is shared with another company on the board, which is always a plain delete."
+            },
+            "required": false,
+            "description": "Pass `true` to delete and block: the company is removed from the board and kept on the blocklist, so backfill, imports and the API cannot add it back until it is unblocked. Defaults to `false`, a plain delete after which backfill may add the company again if it still matches the board’s sources. Ignored for a company whose website domain is shared with another company on the board, which is always a plain delete.",
+            "name": "block",
+            "in": "query"
           }
         ],
         "responses": {
@@ -6186,6 +6239,365 @@
         "operationId": "verifyDomain"
       }
     },
+    "/email-domains": {
+      "get": {
+        "summary": "List email sender domains",
+        "description": "Returns the custom email sender domain for your board. A board has at most one, so the list holds zero or one item.",
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": ["list"]
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/v1/email-domains"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EmailDomain"
+                      }
+                    }
+                  },
+                  "required": ["object", "url", "hasMore", "nextCursor", "data"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error. Every non-2xx response uses the same envelope; see the Errors section of the introduction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "listEmailDomains"
+      },
+      "post": {
+        "summary": "Add an email sender domain",
+        "description": "Registers a custom domain for the board’s outgoing email (job alerts, magic links, receipts, Inbox replies) and returns the DNS records to publish. The setup loop is: create the domain, publish every required record in `dnsRecords` at the DNS provider (DNS-only, not proxied), then call `POST /email-domains/{id}/verify` until `status` is `verified`. Cavuno also re-checks pending domains in the background and emails the board owners when the domain verifies. Until then board email keeps sending from the Cavuno address. Requires an active primary custom domain (see `POST /domains`) and a plan that includes branding removal.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmailDomainBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDomain"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The hostname is malformed or is not the primary custom domain or one of its subdomains (`email_domains_invalid_hostname`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The plan does not include custom sender domains (`email_domains_plan_required`; Basic and above).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The board already has a sender domain (`email_domains_already_exists`), or has no active primary custom domain (`email_domains_primary_domain_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The email provider failed or is unavailable (`email_domains_provider_error`). Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "createEmailDomain"
+      }
+    },
+    "/email-domains/{id}": {
+      "get": {
+        "summary": "Retrieve an email sender domain",
+        "description": "Returns the sender domain with its current status and the DNS records to publish, as of the last check.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The email domain ID."
+            },
+            "required": true,
+            "description": "The email domain ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDomain"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Email domain not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "getEmailDomain"
+      },
+      "patch": {
+        "summary": "Update the email sender",
+        "description": "Changes the From name or mailbox for a verified sender domain. Requires the `settings.manage` permission, as in the dashboard.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The email domain ID."
+            },
+            "required": true,
+            "description": "The email domain ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmailDomainBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDomain"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The sender name or mailbox is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Email domain not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The domain is not verified yet (`email_domains_not_verified`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "updateEmailDomain"
+      },
+      "delete": {
+        "summary": "Delete an email sender domain",
+        "description": "Removes the sender domain. Board email goes back to the Cavuno address immediately; the DNS records can then be deleted.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The email domain ID."
+            },
+            "required": true,
+            "description": "The email domain ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          },
+          "403": {
+            "description": "The plan does not include custom sender domains (`email_domains_plan_required`; Basic and above).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Email domain not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The email provider failed or is unavailable (`email_domains_provider_error`). Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "deleteEmailDomain"
+      }
+    },
+    "/email-domains/{id}/verify": {
+      "post": {
+        "summary": "Verify an email sender domain",
+        "description": "Checks the domain’s DNS records now and returns the updated domain. Call it after publishing the records in `dnsRecords`; DNS changes can take a few minutes to propagate, so a `pending` or `failed` result right after publishing is normal. If `dnsRecords` was empty, this also retries setting the domain up with the email provider.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The email domain ID."
+            },
+            "required": true,
+            "description": "The email domain ID.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDomain"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The plan does not include custom sender domains (`email_domains_plan_required`; Basic and above).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Email domain not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The email provider failed or is unavailable (`email_domains_provider_error`). Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Domains"],
+        "operationId": "verifyEmailDomain"
+      }
+    },
     "/employer-subscriptions": {
       "get": {
         "summary": "List employer subscriptions",
@@ -7032,6 +7444,93 @@
         "operationId": "reactivateEmployer"
       }
     },
+    "/feedback": {
+      "post": {
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Report a problem as an AI agent",
+        "description": "Agent Feedback Protocol v0.1 (https://trybackloop.com/spec/). Report anything that prevented or complicated a task on Cavuno's API, CLI, MCP server or SDK. Responses use the protocol's own shapes, not the usual error envelope. Bodies over 16384 bytes and unknown fields are rejected. 20 reports per account or visitor every 5 minutes. Never include credentials or personal data; send the report, then continue with your task. Discovery: `/.well-known/agent-feedback`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentFeedbackReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. A retry with the same `session_id` and content returns the original report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_json` or `invalid_feedback`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`. Wait for `Retry-After` seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`rate_limit_unavailable`. Continue with your task.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFeedbackError"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Agent feedback"],
+        "operationId": "submitAgentFeedback"
+      }
+    },
     "/imports": {
       "get": {
         "summary": "List import batches",
@@ -7633,10 +8132,10 @@
                 "stripe",
                 "google_analytics"
               ],
-              "description": "The reporting provider key."
+              "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing."
             },
             "required": true,
-            "description": "The reporting provider key.",
+            "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing.",
             "name": "provider",
             "in": "path"
           }
@@ -7681,10 +8180,10 @@
                 "stripe",
                 "google_analytics"
               ],
-              "description": "The reporting provider key."
+              "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing."
             },
             "required": true,
-            "description": "The reporting provider key.",
+            "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing.",
             "name": "provider",
             "in": "path"
           }
@@ -7738,10 +8237,10 @@
                 "stripe",
                 "google_analytics"
               ],
-              "description": "The reporting provider key."
+              "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing."
             },
             "required": true,
-            "description": "The reporting provider key.",
+            "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing.",
             "name": "provider",
             "in": "path"
           }
@@ -7781,10 +8280,10 @@
                 "stripe",
                 "google_analytics"
               ],
-              "description": "The reporting provider key."
+              "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing."
             },
             "required": true,
-            "description": "The reporting provider key.",
+            "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing.",
             "name": "provider",
             "in": "path"
           }
@@ -8309,7 +8808,7 @@
       },
       "post": {
         "summary": "Create a job",
-        "description": "Creates a new job in `draft` status. The request is idempotent when an `Idempotency-Key` header is supplied. Reposts of existing jobs return 409 `jobs_already_exists` with the matching job ID. `remoteOption` is required, and a `salaryMin` or `salaryMax` requires both `salaryCurrency` and `salaryTimeframe`; a missing one returns `400 validation_bad_request` naming the field.",
+        "description": "Creates a new job in `draft` status. The request is idempotent when an `Idempotency-Key` header is supplied. Reposts of existing jobs return 409 `jobs_already_exists` with the matching job ID. Always set `externalId` (the source job URL or ATS requisition ID) so reposts are detected reliably. When the 409 has `details.matched_on: \"application_url\"`, another job on your account uses the same `applicationUrl`; `details.matching_jobs` lists up to 5 of them. If the new job is a different role that shares that application destination (one ATS page or one inbox), retry with `allowSharedApplicationUrl: true`. The retry is a different request body, so send a new `Idempotency-Key` if you used one. `remoteOption` is required, and a `salaryMin` or `salaryMax` requires both `salaryCurrency` and `salaryTimeframe`; a missing one returns `400 validation_bad_request` naming the field.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8352,7 +8851,7 @@
             }
           },
           "409": {
-            "description": "A job with the same `applicationUrl`, `externalId`, or content already exists on your account. The matching job ID is returned in `details.existing_job_id`.",
+            "description": "A job with the same `applicationUrl`, `externalId`, or content already exists on your account. The matching job ID is returned in `details.existing_job_id` and the check that matched in `details.matched_on` (`application_url`, `external_id`, or `composite_hash`). For `application_url`, `details.matching_jobs` lists up to 5 jobs that use the same application URL or email, each as `{ id, title, status }`; if this is a different role that shares that destination, retry with `allowSharedApplicationUrl: true` (and a new `Idempotency-Key` if you used one). A matching `externalId` or an identical job cannot be overridden.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8418,6 +8917,9 @@
                               },
                               "details": {
                                 "nullable": true
+                              },
+                              "upgrade": {
+                                "$ref": "#/components/schemas/PlanUpgradeHint"
                               }
                             },
                             "required": ["code", "message"]
@@ -10126,6 +10628,176 @@
         "operationId": "downloadOperationOutput"
       }
     },
+    "/page-content": {
+      "get": {
+        "summary": "Retrieve a page intro",
+        "description": "Returns the intro written for one category or location page. Address the page with exactly one of `category` or `place`. An unknown slug is a 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the category page: its slug, an alias, or its board-language slug."
+            },
+            "required": false,
+            "description": "Slug of the category page: its slug, an alias, or its board-language slug.",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias."
+            },
+            "required": false,
+            "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias.",
+            "name": "place",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown page, or the page has no intro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Page content"],
+        "operationId": "getPageContent"
+      },
+      "put": {
+        "summary": "Set a page intro",
+        "description": "Sets the intro of one category or location page; the last write wins. The page shows it on page 1 with no filters, and the board's public category and place resolutions return it as `introHtml`. Address the page with exactly one of `category` or `place`. An unknown slug is a 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the category page: its slug, an alias, or its board-language slug."
+            },
+            "required": false,
+            "description": "Slug of the category page: its slug, an alias, or its board-language slug.",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias."
+            },
+            "required": false,
+            "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias.",
+            "name": "place",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPageContentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Page content"],
+        "operationId": "updatePageContent"
+      },
+      "delete": {
+        "summary": "Delete a page intro",
+        "description": "Removes the intro of one category or location page. Address the page with exactly one of `category` or `place`. An unknown slug is a 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the category page: its slug, an alias, or its board-language slug."
+            },
+            "required": false,
+            "description": "Slug of the category page: its slug, an alias, or its board-language slug.",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias."
+            },
+            "required": false,
+            "description": "Slug of the location page: the place's `slug`, `canonicalSlug` or a merged-away alias.",
+            "name": "place",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted, or the page had no intro."
+          },
+          "404": {
+            "description": "Unknown page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-audience": "operator",
+        "tags": ["Page content"],
+        "operationId": "deletePageContent"
+      }
+    },
     "/paywall": {
       "get": {
         "summary": "Get candidate paywall configuration",
@@ -11714,7 +12386,7 @@
     "/settings/job-form/custom-fields": {
       "put": {
         "summary": "Replace custom job field definitions",
-        "description": "Whole-array replace of the board's custom job field definitions (`jobFormConfig.customFields` only: other job-form keys are untouched). Array order is display order. Empty array removes all fields. Content validation rejects empty labels, duplicate keys, optionless selects, inverted number bounds, and cap breaches (400). Changing `type` on an existing key is rejected (422 `settings_custom_field_type_immutable`); delete the field and recreate it. Renaming a key is delete+add and orphans per-job values under the old key. Response shape matches `GET /v1/settings/job-form`.",
+        "description": "Whole-array replace of the board's custom job field definitions (`jobFormConfig.customFields` only: other job-form keys are untouched). Array order is display order. Empty array removes all fields. Content validation rejects empty labels, duplicate keys, optionless selects, inverted number bounds, and cap breaches (400). Changing `type` on an existing key is rejected (422 `settings_custom_field_type_immutable`); delete the field and recreate it. Renaming a key is delete+add and orphans per-job values under the old key. A field sent without `visibility` keeps its current visibility. The key of a deleted private field cannot be used for a new field (400), so its saved answers stay private. Response shape matches `GET /v1/settings/job-form`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -13036,11 +13708,22 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Filter to a parent category id, or the literal \"null\" for top-level categories. When set, a page may be short or empty while hasMore is true: keep paging until hasMore is false."
+              "description": "Filter to the direct children of a parent category id. The literal \"null\" is a deprecated alias for `topLevel=true`. Combined with `search`, a page may be short or empty while hasMore is true: keep paging until hasMore is false."
             },
             "required": false,
-            "description": "Filter to a parent category id, or the literal \"null\" for top-level categories. When set, a page may be short or empty while hasMore is true: keep paging until hasMore is false.",
+            "description": "Filter to the direct children of a parent category id. The literal \"null\" is a deprecated alias for `topLevel=true`. Combined with `search`, a page may be short or empty while hasMore is true: keep paging until hasMore is false.",
             "name": "parentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "description": "When `true`, return only top-level categories (those with no parent). Cannot be combined with a `parentId` category id."
+            },
+            "required": false,
+            "description": "When `true`, return only top-level categories (those with no parent). Cannot be combined with a `parentId` category id.",
+            "name": "topLevel",
             "in": "query"
           }
         ],
@@ -14429,7 +15112,7 @@
     "/usage": {
       "get": {
         "summary": "Retrieve account usage",
-        "description": "Retrieves actionable product capacity for your Board: used, limit, and remaining for active jobs, confirmed subscribers, and team seats. Unlimited capacities use null limit and remaining. Plan details live on GET /billing/subscription.",
+        "description": "Retrieves actionable product capacity and Builder credit usage for your Board. Unlimited capacities use null limit and remaining. Plan details live on GET /billing/subscription.",
         "responses": {
           "200": {
             "description": "Successful response.",
@@ -15200,7 +15883,7 @@
     },
     {
       "name": "Domains",
-      "description": "Add, list, remove, and verify custom domains, and manage the development origins where sign-in may complete while you test a self-hosted frontend."
+      "description": "Add, list, remove, and verify custom domains and email sender domains, and manage the development origins where sign-in may complete while you test a self-hosted frontend."
     },
     {
       "name": "Webhooks",
@@ -15213,6 +15896,10 @@
     {
       "name": "Redirects",
       "description": "Create, list, update, and delete board redirect rules."
+    },
+    {
+      "name": "Agent feedback",
+      "description": "Report a problem an AI agent hit with the API, CLI, MCP server or SDK (Agent Feedback Protocol v0.1)."
     },
     {
       "name": "Skills",
@@ -15229,6 +15916,10 @@
     {
       "name": "Remote taxonomies",
       "description": "Reference values accepted by the remote-permit and remote-timezone job fields."
+    },
+    {
+      "name": "Page content",
+      "description": "Intro copy on category and location pages: retrieve, set, and delete."
     },
     {
       "name": "Operator",
@@ -15379,6 +16070,9 @@
               "details": {
                 "nullable": true,
                 "description": "Structured context for some errors, such as per-field validation issues."
+              },
+              "upgrade": {
+                "$ref": "#/components/schemas/PlanUpgradeHint"
               }
             },
             "required": ["code", "message", "requestId"]
@@ -16257,6 +16951,26 @@
           "detailsSubmitted",
           "actionRequired"
         ]
+      },
+      "BillingConnectOnboardingLink": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": ["billing_connect_onboarding_link"]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Single-use hosted Stripe onboarding URL. Hand it to a human straight away; it expires within minutes."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 time after which the URL no longer works."
+          }
+        },
+        "required": ["object", "url", "expiresAt"]
       },
       "BillingSubscription": {
         "type": "object",
@@ -17483,7 +18197,7 @@
           "lastActiveAt": {
             "type": "string",
             "nullable": true,
-            "description": "ISO-8601 timestamp of the last sign-in, or `null`."
+            "description": "ISO-8601 timestamp of the last activity on the board (a sign-in or signed-in use), to the hour, or `null`."
           }
         },
         "required": [
@@ -17807,7 +18521,7 @@
           "countryCode": {
             "type": "string",
             "nullable": true,
-            "description": "Absent key leaves the stored country code unchanged; `null` clears it."
+            "description": "Absent key leaves the stored country code unchanged; `null` clears it. Ignored without an error while the candidate has a home place that this request keeps (a changed `location` removes it): the country code is then that place's country."
           },
           "skills": {
             "type": "array",
@@ -18499,7 +19213,8 @@
         "properties": {
           "name": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 40
           },
           "percentOff": {
             "type": "number",
@@ -18578,7 +19293,8 @@
         "properties": {
           "name": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 40
           }
         },
         "required": ["name"],
@@ -19081,6 +19797,118 @@
         "required": ["domain"],
         "additionalProperties": false
       },
+      "EmailDomain": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["email_domain"]
+          },
+          "domain": {
+            "type": "string",
+            "description": "The sending hostname."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "verified", "failed"],
+            "description": "`pending` until the required DNS records verify, `verified` once board email sends from this domain, `failed` when the last check found a problem (see `statusReason`; publish or fix the records and verify again)."
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderLocalPart": {
+            "type": "string"
+          },
+          "senderAddress": {
+            "type": "string",
+            "description": "The From address once the domain is verified."
+          },
+          "dnsRecords": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailDomainDnsRecord"
+            },
+            "description": "Records to publish at the domain’s DNS provider. Empty while the domain is still being set up with the email provider; call verify to retry."
+          },
+          "statusReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["setup_required", "dns_verification_failed"],
+            "description": "Why the last check failed, when it did. `setup_required`: the domain must be set up with the email provider again; call verify, which re-stages it and returns fresh DNS records. `dns_verification_failed`: the published records do not match yet; check each record’s `status`, fix them and verify again."
+          },
+          "verifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastCheckedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "domain",
+          "status",
+          "senderName",
+          "senderLocalPart",
+          "senderAddress",
+          "dnsRecords",
+          "statusReason",
+          "verifiedAt",
+          "lastCheckedAt",
+          "createdAt"
+        ]
+      },
+      "CreateEmailDomainBody": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253,
+            "description": "Hostname to send from. It must be the board’s active primary custom domain or one of its subdomains; a subdomain such as `notifications.acme.com` is recommended so the main domain’s email reputation stays separate. Normalized to lowercase."
+          },
+          "senderName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Display name recipients see in the From header, for example `Acme Jobs`. Defaults to the board name."
+          },
+          "senderLocalPart": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Mailbox before the `@`, for example `info` or `hello`. Defaults to `info`. Normalized to lowercase."
+          }
+        },
+        "required": ["domain"],
+        "additionalProperties": false
+      },
+      "UpdateEmailDomainBody": {
+        "type": "object",
+        "properties": {
+          "senderName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Display name recipients see in the From header."
+          },
+          "senderLocalPart": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Mailbox before the `@`. Normalized to lowercase."
+          }
+        },
+        "additionalProperties": false
+      },
       "EmployerSubscription": {
         "type": "object",
         "properties": {
@@ -19173,7 +20001,8 @@
           },
           "lastActiveAt": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "ISO-8601 timestamp of the last activity on the board (a sign-in or signed-in use), to the hour, or `null`."
           },
           "deactivatedAt": {
             "type": "string",
@@ -19307,6 +20136,197 @@
           "status",
           "joinedAt"
         ]
+      },
+      "AgentFeedbackReport": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "missing_capability",
+              "bug",
+              "unclear_documentation",
+              "unexpected_response",
+              "unhelpful_error",
+              "performance",
+              "other"
+            ],
+            "description": "The kind of problem."
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "What you or your user were trying to accomplish, in plain language."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "What prevented or complicated the task."
+          },
+          "endpoint": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "API path, CLI command or MCP tool involved, e.g. `/jobs`."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE",
+              "HEAD",
+              "OPTIONS"
+            ],
+            "description": "HTTP method, when `endpoint` is a path."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["blocked", "degraded", "completed"],
+            "description": "`blocked`: the task failed. `degraded`: it finished worse or slower. `completed`: a suggestion only."
+          },
+          "workaround": {
+            "type": "boolean",
+            "description": "Whether you found a workaround."
+          },
+          "workaround_description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "The workaround, if any."
+          },
+          "expected": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What you expected to find or happen."
+          },
+          "suggestion": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "A concrete change that would have let you succeed."
+          },
+          "request_id": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "The `X-Request-Id` of the failing call, if you have it."
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "Reuse one value for every report in a task; a retry with the same content returns the original report."
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "version": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "model": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "framework": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false,
+            "description": "Who is reporting: name (agent or product) and model."
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "status_code": {
+                "type": "integer"
+              },
+              "request": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                }
+              },
+              "response_excerpt": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            },
+            "additionalProperties": false,
+            "description": "Sanitized details of the failing call, with no credentials or personal data."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Any other context, as a JSON object."
+          },
+          "spec_version": {
+            "type": "string",
+            "enum": ["0.1"],
+            "description": "Protocol version. Only `0.1` is accepted."
+          }
+        },
+        "required": ["type", "goal", "message"],
+        "additionalProperties": false
+      },
+      "AgentFeedbackAccepted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The report id, e.g. `fb_…`."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["accepted"]
+          },
+          "received_at": {
+            "type": "string",
+            "description": "When Cavuno first received this report (ISO 8601). A retry returns the original time."
+          }
+        },
+        "required": ["id", "status", "received_at"]
+      },
+      "AgentFeedbackError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "`invalid_json`, `invalid_feedback`, `payload_too_large`, `unsupported_media_type`, `rate_limited`, `rate_limit_unavailable` or `internal_error`."
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable explanation."
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["path", "message"]
+                },
+                "description": "Every problem with the report, for `invalid_feedback`."
+              }
+            },
+            "required": ["code", "message"]
+          }
+        },
+        "required": ["error"]
       },
       "Import": {
         "type": "object",
@@ -19666,7 +20686,7 @@
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether the Google Indexing API is enabled: Google is notified immediately when jobs are published or removed. Your site is indexed by Google either way."
+            "description": "Whether the Google Indexing API is enabled: Google is notified immediately when jobs are published or removed. Your site is indexed by Google either way. `true` means setup is complete: Cavuno only enables it after Google confirms the service account is an Owner of the Search Console property, so there is nothing left to add or verify. Use `lastRunAt` and `lastError` to check that submissions keep succeeding."
           },
           "indexNowEnabled": {
             "type": "boolean",
@@ -19680,7 +20700,7 @@
           "lastRunAt": {
             "type": "string",
             "nullable": true,
-            "description": "ISO-8601 timestamp of the last Google Indexing API submission, or null."
+            "description": "ISO-8601 timestamp of the last successful Google Indexing API submission, or null. Submissions are sent when jobs are published or removed, so it stays null until the first one succeeds after indexing is enabled."
           },
           "lastError": {
             "type": "string",
@@ -19729,7 +20749,7 @@
               "stripe",
               "google_analytics"
             ],
-            "description": "The reporting provider key."
+            "description": "The reporting provider key. `tinybird` is deprecated: first-party Board analytics need no connection and are served live by the `/v1/analytics` endpoints, so connecting it changes nothing."
           },
           "enabled": {
             "type": "boolean",
@@ -19946,7 +20966,23 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role, or `null` if not specified."
+            "description": "Employment type of the role, or `null` if not specified. For a job with a custom employment type, this is the Google equivalent of the custom type."
+          },
+          "customEmploymentType": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Stable key of the custom employment type. Never changes."
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name of the custom employment type, as configured."
+              }
+            },
+            "required": ["key", "label"],
+            "description": "The board's custom employment type for this job (for example `Casual`), or `null` when the job uses a built-in type only. A deleted custom type reads back as `null` and the job shows its built-in `employmentType`."
           },
           "remoteOption": {
             "type": "string",
@@ -20088,6 +21124,7 @@
           "status",
           "companyId",
           "employmentType",
+          "customEmploymentType",
           "remoteOption",
           "seniority",
           "salaryMin",
@@ -20137,7 +21174,14 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role."
+            "description": "Employment type of the role. When `customEmploymentType` is also sent, this must be the Google equivalent of that custom type (or be omitted: the server sets it). Sending a built-in type without `customEmploymentType` clears any custom type on the job."
+          },
+          "customEmploymentType": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Key of one of the board's custom employment types (`GET /v1/settings/job-form` → `employmentType.customTypes`). The job is saved with the Google equivalent of that type as its built-in `employmentType`, which is what Google for Jobs and feeds see. An unknown key, a type the board no longer offers (`offered: false`), or an `employmentType` that differs from its Google equivalent returns `400 jobs_constraint_violation`. Pass `null` to clear the custom type and keep the built-in; omitted means unchanged."
           },
           "remoteOption": {
             "type": "string",
@@ -20343,7 +21387,7 @@
             "nullable": true,
             "minLength": 1,
             "maxLength": 255,
-            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Use this value to look up the job later via `GET /v1/jobs?externalId=...` for deduplication. Scoped per-account: two different accounts may reuse the same `externalId` without collision. Up to 255 characters. `null` means not set."
+            "description": "An external identifier for the job from your own system, such as an ATS requisition ID. Use this value to look up the job later via `GET /v1/jobs?externalId=...` for deduplication. Always set it on create (the source job URL or ATS requisition ID) so reposts of the same job are detected reliably, even when several jobs share one `applicationUrl`. Scoped per-account: two different accounts may reuse the same `externalId` without collision. Up to 255 characters. `null` means not set."
           },
           "customFieldValues": {
             "type": "object",
@@ -20410,6 +21454,10 @@
             "type": "string",
             "enum": ["draft", "published"],
             "description": "Initial status of the job. Defaults to `draft`. Only `draft` and `published` are writable here. The system-set values `expired`, `archived`, and `pending_approval` are not. Use the dedicated transitions (`POST /v1/jobs/:id/publish`, `/pause`, `/expire`) for status changes after create."
+          },
+          "allowSharedApplicationUrl": {
+            "type": "boolean",
+            "description": "Set to `true` to create this job even though another job on your account already uses the same `applicationUrl` (for example, several roles that share one ATS page or one application inbox). Only skips the application-URL duplicate check; a matching `externalId` or an identical job (same company, title, location and description) still returns 409 `jobs_already_exists`. Defaults to `false`."
           }
         },
         "required": ["description", "remoteOption", "applicationUrl", "title"],
@@ -20673,6 +21721,59 @@
         "required": ["operations"],
         "additionalProperties": false
       },
+      "PlanUpgradeHint": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "activeJobsLimit",
+              "teamSeatLimit",
+              "canBePublic",
+              "canRemoveBranding",
+              "apiAccess"
+            ],
+            "description": "The plan capability that blocked the request, named as in `GET /v1/billing/subscription` `capabilities`."
+          },
+          "requiredPlan": {
+            "type": "string",
+            "enum": ["starter", "basic", "grow", "advanced", "scale"],
+            "description": "The cheapest self-serve plan that unlocks the action. Pass it as `planKey`. Omitted when it cannot be told without more information; read `GET /v1/billing/subscription` and pick a higher plan."
+          },
+          "checkout": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": ["POST"]
+              },
+              "path": {
+                "type": "string",
+                "enum": ["/v1/billing/checkout"]
+              }
+            },
+            "required": ["method", "path"],
+            "description": "Starts a hosted checkout when the board has no active subscription (for example during a trial)."
+          },
+          "changePlan": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": ["POST"]
+              },
+              "path": {
+                "type": "string",
+                "enum": ["/v1/billing/upgrade"]
+              }
+            },
+            "required": ["method", "path"],
+            "description": "Starts a hosted plan change when the board already has an active subscription."
+          }
+        },
+        "required": ["capability", "checkout", "changePlan"],
+        "description": "Present only on Operator API errors caused by the board's Cavuno plan. Read `GET /v1/billing/subscription` to choose between `checkout` and `changePlan`, call it with `{ \"planKey\": requiredPlan }`, and give the returned `url` to a person to confirm. Each `path` is relative to the API origin, not to a `/v1` base URL. Both endpoints need `billing.manage`. Board API errors never include it."
+      },
       "SearchJobsBody": {
         "type": "object",
         "properties": {
@@ -20731,7 +21832,17 @@
                   ]
                 },
                 "maxItems": 10,
-                "description": "Only return jobs with any of the given employment types. Up to 10 values."
+                "description": "Only return jobs with any of the given built-in employment types. Up to 10 values. A built-in value matches jobs of that type that have no custom employment type: a job with a custom type matches only through `customEmploymentType`. Combined with `customEmploymentType` as a union."
+              },
+              "customEmploymentType": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "maxItems": 10,
+                "description": "Only return jobs with any of the given custom employment type keys (the board's `customTypes`). Up to 10 values. Combined with `employmentType` as a union: a job matches when it has one of these custom types OR one of the given built-in types and no custom type."
               },
               "seniority": {
                 "type": "array",
@@ -20867,7 +21978,14 @@
               "volunteer",
               "other"
             ],
-            "description": "Employment type of the role."
+            "description": "Employment type of the role. When `customEmploymentType` is also sent, this must be the Google equivalent of that custom type (or be omitted: the server sets it). Sending a built-in type without `customEmploymentType` clears any custom type on the job."
+          },
+          "customEmploymentType": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Key of one of the board's custom employment types (`GET /v1/settings/job-form` → `employmentType.customTypes`). The job is saved with the Google equivalent of that type as its built-in `employmentType`, which is what Google for Jobs and feeds see. An unknown key, a type the board no longer offers (`offered: false`), or an `employmentType` that differs from its Google equivalent returns `400 jobs_constraint_violation`. Pass `null` to clear the custom type and keep the built-in; omitted means unchanged."
           },
           "remoteOption": {
             "type": "string",
@@ -21261,7 +22379,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Current effective product permissions. API keys use the key's explicit scopes; OAuth is the intersection of token scopes and the consenting member's live permissions; sessions use the member's live permissions."
+                "description": "Current effective product permissions. API keys use the key's explicit scopes plus the lower levels they include (`publish` includes `manage`, `manage` includes `read`); OAuth is the intersection of token scopes and the consenting member's live permissions; sessions use the member's live permissions."
               },
               "scopes": {
                 "type": "array",
@@ -21521,6 +22639,63 @@
           }
         },
         "required": ["role"]
+      },
+      "PageContent": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": ["page_content"]
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "description": "The category slug the page was addressed by."
+          },
+          "place": {
+            "type": "string",
+            "nullable": true,
+            "description": "The place slug the page was addressed by."
+          },
+          "intro": {
+            "type": "string",
+            "description": "The intro markdown."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["human", "llm"]
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "category",
+          "place",
+          "intro",
+          "source",
+          "updatedAt"
+        ]
+      },
+      "PutPageContentBody": {
+        "type": "object",
+        "properties": {
+          "intro": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown shown above the job list on page 1 of the page. Served as sanitized HTML."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["human", "llm"],
+            "default": "human",
+            "description": "`llm` marks an AI draft a person approved. Defaults to `human`."
+          }
+        },
+        "required": ["intro"],
+        "additionalProperties": false
       },
       "CandidatePaywall": {
         "type": "object",
@@ -22859,6 +24034,69 @@
             ],
             "description": "Company Instagram handle or profile URL. Pass `null` to clear."
           },
+          "ga4MeasurementId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "Google Analytics 4 measurement ID (for example `G-XXXXXXXXXX`) loaded on the public board. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "gtmContainerId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "Google Tag Manager container ID (for example `GTM-XXXXXXX`) loaded on the public board. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "metaPixelId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "Meta Pixel ID loaded on the public board. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinPartnerId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn Insight Tag partner ID loaded on the public board. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinConversionSignUpId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn conversion ID fired when a visitor signs up. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinConversionLoginId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn conversion ID fired when a visitor signs in. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinConversionApplyClickId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn conversion ID fired when a visitor clicks Apply. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinConversionApplySubmitId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn conversion ID fired when a visitor submits an application. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
+          "linkedinConversionJobAlertSubscribeId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "description": "LinkedIn conversion ID fired when a visitor subscribes to job alerts. Letters, digits, `-` and `_`, up to 120 characters. Pass `null` or an empty string to clear."
+          },
           "talentNavLabel": {
             "type": "string",
             "minLength": 1,
@@ -22879,7 +24117,8 @@
                 "nullable": true
               }
             ],
-            "description": "Custom copy displayed on the password gate. Up to 500 characters. Pass `null` to clear."
+            "deprecated": true,
+            "description": "Deprecated: no longer shown on the password gate. Gate copy now lives on the board's builder-designed coming-soon page. Still accepted and returned for compatibility; it will be removed with the hosted board. Up to 500 characters. Pass `null` to clear."
           },
           "signInMethods": {
             "$ref": "#/components/schemas/SignInMethodsPatch"
@@ -22917,6 +24156,10 @@
               "$ref": "#/components/schemas/SettingsAdsenseSlot"
             },
             "description": "Map of placement key to slot configuration. Placement keys are lowercase alphanumeric with `-`, `_`, `.`, or `:`."
+          },
+          "adsenseGoogleConsentMessage": {
+            "type": "boolean",
+            "description": "Use Google's consent message (AdSense → Privacy & messaging) for visitors in the EEA, UK and Switzerland while AdSense is on. Defaults to `true`. Set `false` to show the board's own cookie banner to everyone instead; also turn off \"Maximize message coverage\" in AdSense, or European visitors may see two consent messages."
           },
           "adsTxt": {
             "anyOf": [
@@ -23065,7 +24308,22 @@
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Built-in employment types offered. Empty means every built-in, unless the board has custom types: then it means no built-in is offered, only the offered custom types."
+              },
+              "customTypes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JobFormCustomEmploymentType"
+                },
+                "description": "The board's custom employment types (at most 20)."
+              },
+              "order": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Display order of built-in values and custom type keys. Absent: built-ins in their standard order, then custom types. Entries it misses follow in that same order."
               }
             },
             "required": ["allowedOptions"]
@@ -24453,9 +25711,12 @@
               "$ref": "#/components/schemas/UsageCapacity"
             },
             "description": "Typed product capacities for active jobs, confirmed subscribers, and team seats."
+          },
+          "builderCredits": {
+            "$ref": "#/components/schemas/BuilderCreditUsage"
           }
         },
-        "required": ["object", "capacities"]
+        "required": ["object", "capacities", "builderCredits"]
       },
       "WebhookDelivery": {
         "type": "object",
@@ -27177,6 +28438,14 @@
             "type": "string",
             "description": "utm_medium from the session first-touch href."
           },
+          "content": {
+            "type": "string",
+            "description": "utm_content from the session first-touch href, '' when untagged. Only with `campaignGroupBy=content`."
+          },
+          "term": {
+            "type": "string",
+            "description": "utm_term from the session first-touch href, '' when untagged. Only with `campaignGroupBy=content`."
+          },
           "visits": {
             "type": "number"
           },
@@ -28241,6 +29510,49 @@
         },
         "required": ["method", "name", "expectedValue"]
       },
+      "EmailDomainDnsRecord": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": ["dkim", "return_path", "dmarc"],
+            "description": "`dkim` signs outgoing mail, `return_path` receives bounces and complaints, `dmarc` is an optional policy record."
+          },
+          "type": {
+            "type": "string",
+            "description": "DNS record type, for example `CNAME` or `TXT`."
+          },
+          "name": {
+            "type": "string",
+            "description": "Host to create the record on, relative to the DNS zone the domain lives in (`@` is the zone itself), as most DNS providers expect it typed."
+          },
+          "value": {
+            "type": "string",
+            "description": "Exact value to publish."
+          },
+          "ttl": {
+            "type": "string",
+            "description": "Suggested TTL. `Auto` means the DNS provider’s default."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the domain needs this record to send. DMARC is recommended but optional."
+          },
+          "status": {
+            "type": "string",
+            "description": "Last check of this record: `pending`, `verified`, or `failed`."
+          }
+        },
+        "required": [
+          "purpose",
+          "type",
+          "name",
+          "value",
+          "ttl",
+          "required",
+          "status"
+        ]
+      },
       "EmployerApprovedCompany": {
         "type": "object",
         "properties": {
@@ -29076,9 +30388,47 @@
             "type": "string",
             "nullable": true
           },
-          "passwordProtectionMessage": {
+          "ga4MeasurementId": {
             "type": "string",
             "nullable": true
+          },
+          "gtmContainerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaPixelId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinPartnerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinConversionSignUpId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinConversionLoginId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinConversionApplyClickId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinConversionApplySubmitId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedinConversionJobAlertSubscribeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "passwordProtectionMessage": {
+            "type": "string",
+            "nullable": true,
+            "deprecated": true,
+            "description": "Deprecated: no longer shown on the password gate. Gate copy now lives on the board's builder-designed coming-soon page. Still accepted and returned for compatibility; it will be removed with the hosted board."
           },
           "defaultJobDurationDays": {
             "type": "integer",
@@ -29348,6 +30698,28 @@
           }
         }
       },
+      "JobFormCustomEmploymentType": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable key, derived from the name at creation. Send it as `customEmploymentType` on `POST`/`PATCH /v1/jobs`."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name, e.g. `Casual`."
+          },
+          "employmentType": {
+            "type": "string",
+            "description": "The custom type's Google equivalent: a built-in employment type (Google for Jobs and feeds see this value)."
+          },
+          "offered": {
+            "type": "boolean",
+            "description": "`false` when posters can no longer pick this type (jobs that use it keep its label). Absent means offered."
+          }
+        },
+        "required": ["key", "label", "employmentType"]
+      },
       "CustomFieldDefinition": {
         "type": "object",
         "properties": {
@@ -29395,6 +30767,11 @@
           "max": {
             "type": "number",
             "description": "Inclusive maximum for `number` fields, when set."
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private"],
+            "description": "Who sees the field. `public` (or absent): the job page, employers, search and the Board API. `private`: only the board team, in the dashboard and this Operator API. Board API (`/v1/boards/...`) responses never include private fields or their values. Omitted on an existing field keeps its current visibility."
           }
         },
         "required": ["key", "label", "type", "required"]
@@ -29434,6 +30811,11 @@
           "descriptionFieldKey": {
             "type": "string",
             "description": "Key of the collection's short, long or rich text field whose value is a selected entry's default description. When that field is rich text, an entry's `description` is sanitised HTML. Absent means entries have no default description."
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private"],
+            "description": "Who sees the field. `public` (or absent): the job page, employers, search and the Board API. `private`: only the board team, in the dashboard and this Operator API. Board API (`/v1/boards/...`) responses never include private fields or their values. Omitted on an existing field keeps its current visibility."
           }
         },
         "required": ["key", "label", "typeId", "multiple", "required"]
@@ -29560,6 +30942,78 @@
           }
         },
         "required": ["key", "used", "limit", "remaining"]
+      },
+      "BuilderCreditUsage": {
+        "type": "object",
+        "properties": {
+          "daily": {
+            "type": "object",
+            "properties": {
+              "periodKey": {
+                "type": "string"
+              },
+              "usedTenths": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limitTenths": {
+                "type": "integer",
+                "nullable": true,
+                "minimum": 0
+              },
+              "remainingTenths": {
+                "type": "integer",
+                "nullable": true,
+                "minimum": 0
+              }
+            },
+            "required": [
+              "periodKey",
+              "usedTenths",
+              "limitTenths",
+              "remainingTenths"
+            ]
+          },
+          "monthly": {
+            "type": "object",
+            "properties": {
+              "periodKey": {
+                "type": "string"
+              },
+              "usedTenths": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limitTenths": {
+                "type": "integer",
+                "nullable": true,
+                "minimum": 0
+              },
+              "remainingTenths": {
+                "type": "integer",
+                "nullable": true,
+                "minimum": 0
+              },
+              "resetsAtMs": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "periodKey",
+              "usedTenths",
+              "limitTenths",
+              "remainingTenths",
+              "resetsAtMs"
+            ]
+          },
+          "grantedTenths": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": ["daily", "monthly", "grantedTenths"],
+        "description": "Builder credit usage in tenths of a credit for the current day and billing period, plus spendable granted credits."
       },
       "WebhookDeliveryAttempt": {
         "type": "object",
