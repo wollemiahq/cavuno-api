@@ -18,6 +18,13 @@ capabilities available in the Cavuno UI.
 Use this repository to inspect the contract, generate clients, validate
 integrations, and report API issues.
 
+AI agents can report friction directly: `POST /v1/feedback` accepts
+[Agent Feedback Protocol v0.1](https://trybackloop.com/spec/) reports with or
+without credentials, API error responses link to it with
+`Link: <…/v1/feedback>; rel="agent-feedback"`, and the discovery document is at
+`https://api.cavuno.com/.well-known/agent-feedback`. Up to 20 reports every
+5 minutes; never include credentials or personal data.
+
 This repository is the canonical downloadable OpenAPI source. The document is
 generated from Cavuno's public API allowlist. Do not hand-edit it; propose
 contract changes through an issue.
